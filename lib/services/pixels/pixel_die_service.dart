@@ -91,21 +91,26 @@ class PixelDieService {
     _log.info('Profile transfer complete for "${profile.name}" '
         '(${bytes.length} bytes, hash=0x${ourHash.toRadixString(16).toUpperCase().padLeft(8, '0')})');
 
-    // Verbose verification, only when debug logging is enabled: dump the exact
-    // bytes sent and poll the die for its freshly-stored hash to confirm the
-    // transfer landed intact (useful for byte-level comparison against the
-    // official app / pixels-js fixtures).
+    // The byte-level hex dump stays debug-only — it is large and only useful when
+    // comparing against the official app / pixels-js fixtures.
     if (_log.isLoggable(Level.FINE)) {
-      await _verifyTransfer(bytes, ourHash);
+      _log.fine('DataSet bytes (${bytes.length}) sent to ${die.dieId}:\n${_hexDump(bytes)}');
     }
+
+    // The hash check always runs. A transfer can ack every chunk and still land
+    // corrupt bytes (an undersized ATT MTU truncates each write while the offset
+    // field survives, so the protocol completes normally over data full of holes) —
+    // comparing hashes is the only thing that actually catches it. Logged, not
+    // thrown: the bytes are already on the die either way, and failing the call
+    // would turn a silent problem into a broken flash button on platforms where
+    // this has always worked.
+    await _verifyTransfer(ourHash);
   }
 
-  /// Debug-only: logs a hex dump of the sent bytes and compares our hash against
-  /// the die's actually-stored hash (read via a fresh IAmADie). The die does not
-  /// proactively send IAmADie after a transfer, so we poll with WhoAreYou.
-  Future<void> _verifyTransfer(Uint8List bytes, int ourHash) async {
-    _log.fine('DataSet bytes (${bytes.length}) sent to ${die.dieId}:\n${_hexDump(bytes)}');
-
+  /// Compares our computed DataSet hash against the die's actually-stored hash,
+  /// read via a fresh IAmADie. The die does not proactively send IAmADie after a
+  /// transfer, so we poll with WhoAreYou. Logs SEVERE on mismatch; never throws.
+  Future<void> _verifyTransfer(int ourHash) async {
     var dieHashAfter = die.currentDataSetHash?.toUnsigned(32) ?? 0;
     try {
       final iAmADieFuture = die.waitFor<pix.MessageIAmADie>(
@@ -117,14 +122,19 @@ class PixelDieService {
       dieHashAfter = fresh.dataSetHash.toUnsigned(32);
     } catch (e) {
       _log.warning('Could not read fresh IAmADie hash after transfer: $e');
+      return;
     }
 
-    _log.fine(
-      'Transfer verification: '
-      'ourHash=0x${ourHash.toRadixString(16).toUpperCase().padLeft(8, '0')} '
-      'dieHash=0x${dieHashAfter.toRadixString(16).toUpperCase().padLeft(8, '0')} '
-      '${ourHash == dieHashAfter ? "MATCH ✓" : "MISMATCH ✗ — bytes on die differ from what we sent"}',
-    );
+    final ours = '0x${ourHash.toRadixString(16).toUpperCase().padLeft(8, '0')}';
+    final theirs = '0x${dieHashAfter.toRadixString(16).toUpperCase().padLeft(8, '0')}';
+    if (ourHash == dieHashAfter) {
+      _log.fine('Transfer verification: ourHash=$ours dieHash=$theirs MATCH ✓');
+    } else {
+      _log.severe(
+        'Transfer verification: ourHash=$ours dieHash=$theirs MISMATCH ✗ — the bytes '
+        'stored on the die differ from what we sent. The profile on the die is corrupt.',
+      );
+    }
   }
 
   /// Space-separated hex dump, 16 bytes per line with a byte offset prefix.

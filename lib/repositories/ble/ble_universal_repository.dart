@@ -32,7 +32,13 @@ class UniversalBleDevice implements BleDeviceWrapper {
 
   final String? _cachedName;
 
-  UniversalBleDevice({required this.device, String? cachedName}) : _cachedName = cachedName;
+  /// Platform facts, injected so the MTU negotiation below can be exercised in
+  /// tests; defaults to the host, matching [BleUniversalRepository].
+  final PlatformInfo _platform;
+
+  UniversalBleDevice({required this.device, String? cachedName, PlatformInfo? platform})
+      : _cachedName = cachedName,
+        _platform = platform ?? PlatformInfo.host();
 
   /// Discover services and characteristics. Connection must already be established
   /// by [BleUniversalRepository] before calling this.
@@ -61,7 +67,37 @@ class UniversalBleDevice implements BleDeviceWrapper {
     _serviceId = serviceUuid;
     _notifyCharacteristicId = notifyUuid;
     _writeCharacteristicId = writeUuid;
+    // Negotiate the MTU before any message traffic — see [_requestAndroidMtu].
+    await _requestAndroidMtu();
     await UniversalBle.subscribeNotifications(deviceId, serviceUuid, notifyUuid);
+  }
+
+  /// Android is the only platform where the ATT MTU must be requested explicitly:
+  /// it defaults to 23 (a 20-byte payload), and `universal_ble` never negotiates on
+  /// its own. CoreBluetooth (macOS/iOS) and the browser (web) negotiate at connect,
+  /// and Windows/Linux expose no request API — so this is a no-op everywhere else.
+  ///
+  /// Without it, anything longer than 20 bytes is silently truncated in **both**
+  /// directions: bulk animation-transfer writes land as garbage (while still acking
+  /// correctly, because the offset field survives in the first 4 bytes), and inbound
+  /// `IAmADie` loses its trailing battery fields. Failures are logged and swallowed —
+  /// a die that refuses the request still works for everything that fits in 20 bytes,
+  /// which is exactly how it behaved before.
+  Future<void> _requestAndroidMtu() async {
+    if (!_platform.isAndroid) return;
+    try {
+      final granted = await UniversalBle.requestMtu(deviceId, kPreferredMtu);
+      if (granted < kMinUsefulMtu) {
+        log.severe(
+          'MTU negotiated to $granted — below the $kMinUsefulMtu a full bulk-transfer '
+          'chunk needs. Animation transfers to this die will be corrupted.',
+        );
+      } else {
+        log.info('MTU negotiated to $granted');
+      }
+    } catch (e, st) {
+      log.warning('requestMtu failed (continuing at default MTU): $e', e, st);
+    }
   }
 
   @override
@@ -94,6 +130,16 @@ class UniversalBleDevice implements BleDeviceWrapper {
   @override
   String get friendlyName => _cachedName ?? device.name ?? deviceId;
 }
+
+/// ATT MTU requested on Android at connect. This is a request, not a guarantee —
+/// the peripheral decides. Pixels dice observed granting 128 (a 125-byte payload),
+/// comfortably above [kMinUsefulMtu]; the granted value is logged at connect.
+const int kPreferredMtu = 247;
+
+/// Below this the largest message the app writes — a bulk-transfer chunk of 100
+/// payload bytes plus its 4-byte header, plus 3 bytes of ATT overhead — no longer
+/// fits in a single write and would be silently truncated.
+const int kMinUsefulMtu = 107;
 
 class BleUniversalRepository implements BleRepository {
   final _log = Logger("BleUniversalRepository");
@@ -280,7 +326,8 @@ class BleUniversalRepository implements BleRepository {
     _pendingConnect.removeWhere((d) => d.deviceId == bleDevice.deviceId);
     try {
       await UniversalBle.connect(bleDevice.deviceId);
-      _discoveredBleDevices[bleDevice.deviceId] = UniversalBleDevice(device: bleDevice, cachedName: _deviceNameCache[bleDevice.deviceId]);
+      _discoveredBleDevices[bleDevice.deviceId] =
+          UniversalBleDevice(device: bleDevice, cachedName: _deviceNameCache[bleDevice.deviceId], platform: _platform);
       _bleDeviceSubscription.add(Map.of(_discoveredBleDevices));
       _setupConnectionListener(bleDevice.deviceId);
       _log.info("connected: ${_deviceNameCache[bleDevice.deviceId] ?? bleDevice.name ?? bleDevice.deviceId}");
@@ -307,7 +354,8 @@ class BleUniversalRepository implements BleRepository {
         await UniversalBle.connect(bleDevice.deviceId);
         // Emit only after connection is established — DieDomain will then call
         // device.init() → discoverServices() on an already-connected device.
-        _discoveredBleDevices[bleDevice.deviceId] = UniversalBleDevice(device: bleDevice, cachedName: _deviceNameCache[bleDevice.deviceId]);
+        _discoveredBleDevices[bleDevice.deviceId] =
+            UniversalBleDevice(device: bleDevice, cachedName: _deviceNameCache[bleDevice.deviceId], platform: _platform);
         _bleDeviceSubscription.add(Map.of(_discoveredBleDevices));
         _setupConnectionListener(bleDevice.deviceId);
         _log.info("connected: ${_deviceNameCache[bleDevice.deviceId] ?? bleDevice.name ?? bleDevice.deviceId}");

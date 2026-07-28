@@ -12,10 +12,23 @@ import 'package:roll_feathers/services/app_service.dart';
 class ParseResult {
   final int result;
   final Map<String, int> allRolled;
+
+  /// The dice the rule actually acted on — the selection of the `use` block whose
+  /// `on result` range matched. Falls back to all rolled dice when nothing matched.
+  /// For a rule like `doubles` this is the pair, not the whole roll.
   final Map<String, int> rolledEvaluated;
   final String ruleName;
   final String? ruleDisplayName;
+
+  /// The rule's `for roll ...` die-matcher accepted this roll. This says nothing
+  /// about whether the rule produced a result — see [matchedResult].
   final bool ruleReturn;
+
+  /// An `on result` range actually matched, so [result] is a value this rule
+  /// meant to report. A rule can pass [ruleReturn] and still match no range (e.g.
+  /// `doubles` on a roll with no pair, where the count aggregate is 0); callers
+  /// deciding whether the rule "claims" a roll must check this, not [ruleReturn].
+  final bool matchedResult;
   final int? modifier;
 
   ParseResult({
@@ -25,6 +38,7 @@ class ParseResult {
     required this.ruleName,
     this.ruleDisplayName,
     required this.ruleReturn,
+    this.matchedResult = false,
     this.modifier,
   });
 }
@@ -375,17 +389,19 @@ class RuleEvaluator {
   ParseResult _buildParseResult(
     int rollResultAggregate,
     List<GenericDie> rolls,
-    Map<GenericDie, int> baseMap,
+    Map<GenericDie, int> evaluatedMap,
     String ruleName,
     bool passed, {
     String? ruleDisplayName,
+    bool matchedResult = false,
   }) => ParseResult(
     result: rollResultAggregate,
     allRolled: Map.fromEntries(rolls.map((e) => MapEntry(e.dieId, e.getFaceValueOrElse()))),
-    rolledEvaluated: Map.fromEntries(baseMap.entries.map((e) => MapEntry(e.key.dieId, e.value))),
+    rolledEvaluated: Map.fromEntries(evaluatedMap.entries.map((e) => MapEntry(e.key.dieId, e.value))),
     ruleName: ruleName,
     ruleDisplayName: ruleDisplayName,
     ruleReturn: passed,
+    matchedResult: matchedResult,
   );
 
   RuleEvaluation _evaluateRuleV11(List<GenericDie> rolls, ParsedScriptV11 result) {
@@ -394,6 +410,12 @@ class RuleEvaluator {
     final effects = <Future<void> Function()>[];
     int rollResultAggregate = 0;
     int blockIdx = 0;
+    // Whether any `on result` range matched, and the selection of the block it
+    // matched in — the dice the rule actually acted on. Without this a rule whose
+    // die-matcher passes but whose ranges all miss (e.g. `doubles` on a roll with
+    // no pair) would still report its aggregate as the roll's result.
+    bool matchedResult = false;
+    Map<GenericDie, int>? matchedSelection;
     for (final block in ctx.result.useBlocks) {
       if (!ctx.passed) break;
       final selMap = _resolveSelection(block, ctx.baseMap, ctx.named);
@@ -409,6 +431,8 @@ class RuleEvaluator {
               "[DSL v1.1]  check range ${rr.startInclusive ? '[' : '('}${rr.start}:${rr.end}${rr.endInclusive ? ']' : ')'} contains $aggValue -> ${rr.valueIn(aggValue)}",
         );
         if (!rr.valueIn(aggValue)) continue;
+        matchedResult = true;
+        matchedSelection ??= selMap;
         _log.fine(
           () =>
               "[DSL v1.1]  on result matched range -> queuing target ${res.targetFunction.target} args=${res.targetFunction.args.join(' ')}",
@@ -465,8 +489,9 @@ class RuleEvaluator {
     }
     return RuleEvaluation(
       result: _buildParseResult(
-        rollResultAggregate, rolls, ctx.baseMap, ctx.result.name, ctx.passed,
+        rollResultAggregate, rolls, matchedSelection ?? ctx.baseMap, ctx.result.name, ctx.passed,
         ruleDisplayName: ctx.result.displayName,
+        matchedResult: matchedResult,
       ),
       effects: effects,
     );

@@ -63,7 +63,17 @@ abstract final class PixelConnectionFlags {
 
 /// Tuning for the chunked profile/animation upload protocol.
 abstract final class PixelTransfer {
-  /// Max payload bytes per data chunk written to the die.
+  /// Max payload bytes per data chunk written to the die. Matches the official
+  /// pixels-js SDK.
+  ///
+  /// **Bounded by the negotiated ATT MTU — do not raise this past 121.** A chunk
+  /// goes out as a `MessageBulkData` of `4 + maxChunkSize` bytes in a single
+  /// write-without-response, which must fit in `mtu - 3`. Pixels dice have been
+  /// observed granting an MTU of 128, leaving 125 usable: 104 bytes fits with only
+  /// 21 to spare. Exceeding it does not raise an error — the write is silently
+  /// truncated, and because the offset field lives in bytes 2-3 it survives, so
+  /// every chunk still acks and the transfer "succeeds" while writing corrupt
+  /// bytes to the die. See `kMinUsefulMtu` in `ble_universal_repository.dart`.
   static const int maxChunkSize = 100;
 
   /// How long to wait for the die's transfer acknowledgement before timing out.

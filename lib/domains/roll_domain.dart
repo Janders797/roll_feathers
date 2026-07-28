@@ -117,7 +117,12 @@ class RollDomain {
     for (var r in _ruleParser.getRules(enabledOnly: true)) {
       final eval = _ruleParser.evaluateRule(r.script, _rolledDie.values.toList());
       evaluations.add(eval);
-      if (eval.result.ruleReturn) {
+      // A rule claims the roll only if it produced a result — its die-matcher
+      // passing is not enough. `doubles` is `for roll *d*`, so ruleReturn alone
+      // would have it claim every roll and record its dupe-count aggregate (0 on
+      // a roll with no pair) in place of the natural sum, while also shadowing
+      // every later rule.
+      if (eval.result.ruleReturn && eval.result.matchedResult) {
         ruleResult = eval.result;
         rollType = RollType.rule;
         break;
@@ -129,7 +134,9 @@ class RollDomain {
     late int resultValue;
     String? ruleName;
     String? ruleDisplayName;
-    if (ruleResult != null && ruleResult.ruleReturn) {
+    // Only set above when the rule both matched the dice and produced a result.
+    if (ruleResult != null) {
+      // History shows every die that was rolled; the rule contributes the value.
       resultRolls = ruleResult.allRolled;
       resultValue = ruleResult.result;
       ruleName = ruleResult.ruleName;
