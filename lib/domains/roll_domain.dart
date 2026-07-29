@@ -6,6 +6,7 @@ import 'package:roll_feathers/dice_sdks/dice_sdks.dart';
 import 'package:roll_feathers/domains/die_domain.dart';
 import 'package:roll_feathers/domains/roll_lifecycle_observer.dart';
 import 'package:roll_feathers/domains/roll_parser/rule_evaluator.dart';
+import 'package:roll_feathers/domains/roll_parser/rule_parser.dart';
 import 'package:roll_feathers/services/app_service.dart';
 
 class RollResult {
@@ -78,8 +79,12 @@ class RollDomain {
 
   Stream<RollStatus> subscribeRollStatus() => _rollStatusStream.stream;
 
-  static Future<RollDomain> create(DieDomain dieDomain, AppService appService,
-      {required RuleEvaluator ruleParser, List<RollLifecycleObserver> observers = const []}) async {
+  static Future<RollDomain> create(
+    DieDomain dieDomain,
+    AppService appService, {
+    required RuleEvaluator ruleParser,
+    List<RollLifecycleObserver> observers = const [],
+  }) async {
     return RollDomain._(dieDomain, appService, ruleParser, observers);
   }
 
@@ -115,7 +120,29 @@ class RollDomain {
     final evaluations = <RuleEvaluation>[];
     ParseResult? ruleResult;
     for (var r in _ruleParser.getRules(enabledOnly: true)) {
-      final eval = _ruleParser.evaluateRule(r.script, _rolledDie.values.toList());
+      // Surface a bad rule, don't let it block the roll. Recording is the
+      // must-never-fail step and happens in phase 2, downstream of this loop
+      // (docs/design/rule_effect_separation.md), so an unguarded throw here would
+      // destroy the roll record. No migration or repair is attempted — the rule
+      // is reported and skipped.
+      final RuleEvaluation eval;
+      try {
+        eval = _ruleParser.evaluateRule(r.script, _rolledDie.values.toList());
+      } catch (e, st) {
+        // Only blame the `report` requirement when the script actually lacks one;
+        // a rule can fail to parse for any number of unrelated reasons and a
+        // confidently wrong diagnosis is worse than none.
+        final hasReport = RuleParser.reportClausePattern.hasMatch(r.script);
+        _log.severe(
+          hasReport
+              ? 'Rule "${r.name}" could not be evaluated and was skipped for this roll. Parser said: $e'
+              : 'Rule "${r.name}" has no `report` clause and was skipped for this roll. Every rule must '
+                  'end with `report <sum|min|max|avg|count> over <@selection|\$ALL_DICE>`. Parser said: $e',
+          e,
+          st,
+        );
+        continue;
+      }
       evaluations.add(eval);
       // A rule claims the roll only if it produced a result — its die-matcher
       // passing is not enough. `doubles` is `for roll *d*`, so ruleReturn alone
@@ -162,13 +189,13 @@ class RollDomain {
     }
     final completedDice = _rolledDie.values.toList();
     for (final o in _observers) {
-      o.onRollComplete(completedDice, result)
+      o
+          .onRollComplete(completedDice, result)
           .catchError((Object e, StackTrace st) => _log.warning('observer onRollComplete error', e, st));
     }
 
     return result.rollResult;
   }
-
 
   void _rollStartVirtualDice({bool force = false}) {
     if (!autoRollVirtualDice && !force) {
@@ -210,10 +237,12 @@ class RollDomain {
         }
         if (!dieBlinking) {
           dieBlinking = true;
-          _diceDomain.blinkRolling(die)
+          _diceDomain
+              .blinkRolling(die)
               .catchError((Object e, StackTrace st) => _log.warning('blinkRolling error', e, st));
           for (final o in _observers) {
-            o.onDieRolling(die)
+            o
+                .onDieRolling(die)
                 .catchError((Object e, StackTrace st) => _log.warning('observer onDieRolling error', e, st));
           }
         }

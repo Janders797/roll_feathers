@@ -9,9 +9,37 @@ import 'package:roll_feathers/domains/roll_parser/target_dtos.dart';
 import 'package:roll_feathers/domains/webhook_domain.dart';
 import 'package:roll_feathers/services/app_service.dart';
 
+/// What one `use` block produced. A rule reports a single value (its `report`
+/// clause), but each block computes its own aggregate over its own selection and
+/// independently decides whether it fired — consumers that want the detail behind
+/// the headline number read these.
+class UseBlockOutput {
+  /// The block's `use selection` token, e.g. `@ALL_MAX` or `$ALL_DICE`.
+  final String selection;
+
+  /// The block's own aggregate over its selection — the value its ranges tested.
+  final int aggregate;
+
+  /// Whether any `on result` range in this block matched, i.e. whether it acted.
+  final bool matched;
+
+  /// The block's selected dice, by die id.
+  final Map<String, int> dice;
+
+  const UseBlockOutput({required this.selection, required this.aggregate, required this.matched, required this.dice});
+
+  @override
+  String toString() => 'UseBlockOutput($selection agg=$aggregate matched=$matched dice=${dice.length})';
+}
+
 class ParseResult {
+  /// The rule's reported value, from its required `report` clause.
   final int result;
   final Map<String, int> allRolled;
+
+  /// Every `use` block's output, in script order — including blocks that matched
+  /// nothing. [result] is the rule's single headline number; this is the detail.
+  final List<UseBlockOutput> blockOutputs;
 
   /// The dice the rule actually acted on — the selection of the `use` block whose
   /// `on result` range matched. Falls back to all rolled dice when nothing matched.
@@ -34,6 +62,7 @@ class ParseResult {
   ParseResult({
     required this.result,
     required this.allRolled,
+    this.blockOutputs = const [],
     required this.rolledEvaluated,
     required this.ruleName,
     this.ruleDisplayName,
@@ -90,7 +119,7 @@ class RuleEvaluator {
   final WebhookDomain _webhookDomain;
 
   late List<RuleScript> _userRules;
-  late List<String> _ruleOrder;    // canonical firing/display order (list of names)
+  late List<String> _ruleOrder; // canonical firing/display order (list of names)
   late Set<String> _hiddenDefaults; // names of default rules hidden by the user
 
   List<RuleScript> getRules({bool enabledOnly = false}) {
@@ -154,8 +183,12 @@ class RuleEvaluator {
       await _appService.setSavedScripts(_userRules.map((e) => e.toJsonString()).toList());
       await _appService.setRuleOrder(_ruleOrder);
     } catch (e) {
-      _userRules..clear()..addAll(prevUserRules);
-      _ruleOrder..clear()..addAll(prevRuleOrder);
+      _userRules
+        ..clear()
+        ..addAll(prevUserRules);
+      _ruleOrder
+        ..clear()
+        ..addAll(prevRuleOrder);
       rethrow;
     }
   }
@@ -170,19 +203,18 @@ class RuleEvaluator {
     } else {
       final inDefault = defaultRules.firstWhereOrNull((r) => r.name == name);
       if (inDefault != null) {
-        _userRules.add(RuleScript(
-          name: inDefault.name,
-          script: inDefault.script,
-          enabled: enabled,
-          priority: inDefault.priority,
-        ));
+        _userRules.add(
+          RuleScript(name: inDefault.name, script: inDefault.script, enabled: enabled, priority: inDefault.priority),
+        );
       }
     }
 
     try {
       await _appService.setSavedScripts(_userRules.map((e) => e.toJsonString()).toList());
     } catch (e) {
-      _userRules..clear()..addAll(prevUserRules);
+      _userRules
+        ..clear()
+        ..addAll(prevUserRules);
       rethrow;
     }
   }
@@ -205,7 +237,9 @@ class RuleEvaluator {
     try {
       await _appService.setRuleOrder(_ruleOrder);
     } catch (e) {
-      _ruleOrder..clear()..addAll(prevRuleOrder);
+      _ruleOrder
+        ..clear()
+        ..addAll(prevRuleOrder);
       rethrow;
     }
   }
@@ -235,9 +269,15 @@ class RuleEvaluator {
       await _appService.setRuleOrder(_ruleOrder);
       await _appService.setHiddenRuleNames(_hiddenDefaults.toList());
     } catch (e) {
-      _userRules..clear()..addAll(prevUserRules);
-      _ruleOrder..clear()..addAll(prevRuleOrder);
-      _hiddenDefaults..clear()..addAll(prevHiddenDefaults);
+      _userRules
+        ..clear()
+        ..addAll(prevUserRules);
+      _ruleOrder
+        ..clear()
+        ..addAll(prevRuleOrder);
+      _hiddenDefaults
+        ..clear()
+        ..addAll(prevHiddenDefaults);
       rethrow;
     }
   }
@@ -255,8 +295,12 @@ class RuleEvaluator {
       await _appService.setHiddenRuleNames(_hiddenDefaults.toList());
       await _appService.setRuleOrder(_ruleOrder);
     } catch (e) {
-      _hiddenDefaults..clear()..addAll(prevHiddenDefaults);
-      _ruleOrder..clear()..addAll(prevRuleOrder);
+      _hiddenDefaults
+        ..clear()
+        ..addAll(prevHiddenDefaults);
+      _ruleOrder
+        ..clear()
+        ..addAll(prevRuleOrder);
       rethrow;
     }
   }
@@ -324,7 +368,10 @@ class RuleEvaluator {
       result = reparsed.value..script = substituted;
       result.threshold = savedThreshold;
       result.modifier = savedModifier;
-      _log.fine(() => "[DSL v1.1] Substituted globals: MAX=$gMax MIN=$gMin ROLLED=${rolls.length} THRESHOLD=$savedThreshold MODIFIER=$savedModifier");
+      _log.fine(
+        () =>
+            "[DSL v1.1] Substituted globals: MAX=$gMax MIN=$gMin ROLLED=${rolls.length} THRESHOLD=$savedThreshold MODIFIER=$savedModifier",
+      );
     }
 
     final named = <String, Map<GenericDie, int>>{};
@@ -394,9 +441,11 @@ class RuleEvaluator {
     bool passed, {
     String? ruleDisplayName,
     bool matchedResult = false,
+    List<UseBlockOutput> blockOutputs = const [],
   }) => ParseResult(
     result: rollResultAggregate,
     allRolled: Map.fromEntries(rolls.map((e) => MapEntry(e.dieId, e.getFaceValueOrElse()))),
+    blockOutputs: blockOutputs,
     rolledEvaluated: Map.fromEntries(evaluatedMap.entries.map((e) => MapEntry(e.key.dieId, e.value))),
     ruleName: ruleName,
     ruleDisplayName: ruleDisplayName,
@@ -416,14 +465,15 @@ class RuleEvaluator {
     // no pair) would still report its aggregate as the roll's result.
     bool matchedResult = false;
     Map<GenericDie, int>? matchedSelection;
+    final blockOutputs = <UseBlockOutput>[];
     for (final block in ctx.result.useBlocks) {
       if (!ctx.passed) break;
       final selMap = _resolveSelection(block, ctx.baseMap, ctx.named);
       final aggValue = block.aggregate(selMap.values.toList());
-      rollResultAggregate = aggValue;
       _log.fine(() => "[DSL v1.1] use#${blockIdx++} sel=${block.selectionToken} size=${selMap.length} agg=$aggValue");
       final coActions = _buildCoActions(block, aggValue);
 
+      bool blockMatched = false;
       for (final res in block.targets) {
         final rr = res.resultRange;
         _log.finer(
@@ -431,8 +481,17 @@ class RuleEvaluator {
               "[DSL v1.1]  check range ${rr.startInclusive ? '[' : '('}${rr.start}:${rr.end}${rr.endInclusive ? ']' : ')'} contains $aggValue -> ${rr.valueIn(aggValue)}",
         );
         if (!rr.valueIn(aggValue)) continue;
-        matchedResult = true;
-        matchedSelection ??= selMap;
+        blockMatched = true;
+        // First matching block owns the reported value and the evaluated dice.
+        // Assigning per-block unconditionally (as this once did) let a trailing
+        // block that matched nothing overwrite the result — `highLow*` reported
+        // its @ALL_MIN aggregate even when the @ALL_MAX block was the one that
+        // fired.
+        if (!matchedResult) {
+          matchedResult = true;
+          matchedSelection = selMap;
+          rollResultAggregate = aggValue;
+        }
         _log.fine(
           () =>
               "[DSL v1.1]  on result matched range -> queuing target ${res.targetFunction.target} args=${res.targetFunction.args.join(' ')}",
@@ -441,13 +500,15 @@ class RuleEvaluator {
           case ResultTargetType.action:
             final call = _buildActionCallArgs(res, rolls, selMap);
             if (call.fn != null) {
-              effects.add(() => call.fn!(
-                dd: _dieDomain,
-                allDice: call.actionAllDice,
-                resultDice: call.actionResultDice,
-                defaultDice: call.defaultDice,
-                args: call.filteredArgs,
-              ));
+              effects.add(
+                () => call.fn!(
+                  dd: _dieDomain,
+                  allDice: call.actionAllDice,
+                  resultDice: call.actionResultDice,
+                  defaultDice: call.defaultDice,
+                  args: call.filteredArgs,
+                ),
+              );
             }
             break;
           case ResultTargetType.webhook:
@@ -455,43 +516,77 @@ class RuleEvaluator {
             final capturedAggValue = aggValue;
             final capturedSelMap = selMap;
             final capturedCoActions = coActions;
-            effects.add(() => _webhookDomain.fireWebhook(
-              url: capturedRes.targetFunction.target,
-              method: capturedRes.targetFunction.args.isNotEmpty ? capturedRes.targetFunction.args[0] : 'POST',
-              payload: RollResultDTO.fromRollData(
-                ruleName: ctx.result.name,
-                aggregate: capturedAggValue,
-                timestamp: rollTimestamp,
-                matchedRange: capturedRes.resultRange,
-                allDice: rolls,
-                resultDiceMap: capturedSelMap,
-                coActions: capturedCoActions,
+            effects.add(
+              () => _webhookDomain.fireWebhook(
+                url: capturedRes.targetFunction.target,
+                method: capturedRes.targetFunction.args.isNotEmpty ? capturedRes.targetFunction.args[0] : 'POST',
+                payload: RollResultDTO.fromRollData(
+                  ruleName: ctx.result.name,
+                  aggregate: capturedAggValue,
+                  timestamp: rollTimestamp,
+                  matchedRange: capturedRes.resultRange,
+                  allDice: rolls,
+                  resultDiceMap: capturedSelMap,
+                  coActions: capturedCoActions,
+                ),
               ),
-            ));
+            );
             break;
           case ResultTargetType.discord:
             final capturedRes = res;
             final capturedAggValue = aggValue;
             final capturedSelMap = selMap;
-            effects.add(() => _webhookDomain.fireWebhook(
-              url: capturedRes.targetFunction.target,
-              method: 'POST',
-              payload: DiscordRollDTO.fromRollData(
-                ruleName: ctx.result.name,
-                aggregate: capturedAggValue,
-                timestamp: rollTimestamp,
-                resultDiceMap: capturedSelMap,
+            effects.add(
+              () => _webhookDomain.fireWebhook(
+                url: capturedRes.targetFunction.target,
+                method: 'POST',
+                payload: DiscordRollDTO.fromRollData(
+                  ruleName: ctx.result.name,
+                  aggregate: capturedAggValue,
+                  timestamp: rollTimestamp,
+                  resultDiceMap: capturedSelMap,
+                ),
               ),
-            ));
+            );
             break;
         }
       }
+      blockOutputs.add(
+        UseBlockOutput(
+          selection: block.selectionToken,
+          aggregate: aggValue,
+          matched: blockMatched,
+          dice: {for (final e in selMap.entries) e.key.dieId: e.value},
+        ),
+      );
     }
+    // A `report <agg> over <selection>` clause overrides the reported value once
+    // the rule has claimed the roll. Ranges still test their own block aggregate,
+    // so matching behaviour is untouched — only the number the rule reports moves.
+    // `rolledEvaluated` deliberately stays the acted-on selection: reporting the
+    // roll total does not mean the rule acted on every die.
+    final report = ctx.result.report;
+    if (matchedResult) {
+      final reportMap =
+          report.selectionToken == allDiceKey
+              ? ctx.baseMap
+              : (ctx.named[report.selectionToken] ?? const <GenericDie, int>{});
+      rollResultAggregate = report.aggregate(reportMap.values.toList());
+      _log.fine(
+        () => "[DSL v1.1] report over ${report.selectionToken} size=${reportMap.length} -> $rollResultAggregate",
+      );
+    }
+
     return RuleEvaluation(
       result: _buildParseResult(
-        rollResultAggregate, rolls, matchedSelection ?? ctx.baseMap, ctx.result.name, ctx.passed,
+        rollResultAggregate,
+        rolls,
+        matchedSelection ?? ctx.baseMap,
+        ctx.result.name,
+        ctx.passed,
         ruleDisplayName: ctx.result.displayName,
         matchedResult: matchedResult,
+        blockOutputs: blockOutputs,
       ),
       effects: effects,
     );

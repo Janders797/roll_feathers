@@ -1,5 +1,4 @@
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:roll_feathers/di/di.dart';
@@ -47,19 +46,13 @@ class _DiceScreenWidgetState extends State<DiceScreenWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Settings',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
-                    ),
+                    Text('Settings', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
                     if (widget.appVersion.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: Text(
                           'v${widget.appVersion}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: Colors.white70),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
                         ),
                       ),
                   ],
@@ -95,22 +88,24 @@ class _DiceScreenWidgetState extends State<DiceScreenWidget> {
                       leading: const Icon(Icons.add),
                     ),
                     ListTile(
-                      onTap: () => _confirmAction(
-                        context,
-                        title: 'Remove Virtual Dice',
-                        message: 'Remove all virtual dice?',
-                        onConfirm: () => widget.viewModel.removeAllVirtualDice.execute(),
-                      ),
+                      onTap:
+                          () => _confirmAction(
+                            context,
+                            title: 'Remove Virtual Dice',
+                            message: 'Remove all virtual dice?',
+                            onConfirm: () => widget.viewModel.removeAllVirtualDice.execute(),
+                          ),
                       title: const Text('Remove Virtual Dice'),
                       leading: const Icon(Icons.remove_circle_outline),
                     ),
                     ListTile(
-                      onTap: () => _confirmAction(
-                        context,
-                        title: 'Remove All Dice',
-                        message: 'Disconnect and remove all dice?',
-                        onConfirm: () => widget.viewModel.disconnectAllDice.execute(),
-                      ),
+                      onTap:
+                          () => _confirmAction(
+                            context,
+                            title: 'Remove All Dice',
+                            message: 'Disconnect and remove all dice?',
+                            onConfirm: () => widget.viewModel.disconnectAllDice.execute(),
+                          ),
                       title: const Text("Remove All Dice"),
                       leading: const Icon(Icons.highlight_remove_outlined),
                     ),
@@ -209,11 +204,7 @@ class _DiceScreenWidgetState extends State<DiceScreenWidget> {
               label: bleOn ? Text(widget.settingsVm.isWeb ? "Pair Die" : "Scan") : const Text("BLE Disabled"),
               icon:
                   scanning
-                      ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                       : bleOn
                       ? const Icon(Icons.bluetooth_searching)
                       : const Icon(Icons.bluetooth_disabled),
@@ -288,10 +279,7 @@ class _DiceScreenWidgetState extends State<DiceScreenWidget> {
           _buildHistoryHeader(),
           isExpanded
               ? Expanded(child: _buildHistoryList())
-              : _buildHistoryList(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-              ),
+              : _buildHistoryList(shrinkWrap: true, physics: const NeverScrollableScrollPhysics()),
         ],
       ),
     );
@@ -335,10 +323,7 @@ class _DiceScreenWidgetState extends State<DiceScreenWidget> {
           builder: (context, snapshot) {
             List<RollResult> rollResults = snapshot.data ?? [];
             if (rollResults.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Center(child: Text('Make some rolls!')),
-              );
+              return const Padding(padding: EdgeInsets.all(20.0), child: Center(child: Text('Make some rolls!')));
             }
             return ListView.builder(
               shrinkWrap: shrinkWrap,
@@ -360,15 +345,16 @@ class _DiceScreenWidgetState extends State<DiceScreenWidget> {
       builder: (BuildContext context) {
         return ListenableBuilder(
           listenable: widget.viewModel,
-          builder: (context, _) => SingleDieSettingsDialog(
-            die: die,
-            haEnabled: widget.settingsVm.getHaConfig().enabled,
-            pixelProfileDomain: widget.viewModel.pixelProfileDomain,
-            onBlink: widget.viewModel.blink.execute,
-            onPreviewRolling: widget.viewModel.previewRollingFlash.execute,
-            onDisconnect: widget.viewModel.disconnectDie.execute,
-            onSave: widget.viewModel.updateDieSettings.execute,
-          ),
+          builder:
+              (context, _) => SingleDieSettingsDialog(
+                die: die,
+                haEnabled: widget.settingsVm.getHaConfig().enabled,
+                pixelProfileDomain: widget.viewModel.pixelProfileDomain,
+                onBlink: widget.viewModel.blink.execute,
+                onPreviewRolling: widget.viewModel.previewRollingFlash.execute,
+                onDisconnect: widget.viewModel.disconnectDie.execute,
+                onSave: widget.viewModel.updateDieSettings.execute,
+              ),
         );
       },
     );
@@ -383,14 +369,15 @@ class _DiceScreenWidgetState extends State<DiceScreenWidget> {
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Confirm')),
-        ],
-      ),
+      builder:
+          (ctx) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Confirm')),
+            ],
+          ),
     );
     if (confirmed == true) onConfirm();
   }
@@ -503,10 +490,7 @@ class _DiceScreenWidgetState extends State<DiceScreenWidget> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                      ),
+                      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
                       TextButton(
                         onPressed: () {
                           final name = nameController.text;

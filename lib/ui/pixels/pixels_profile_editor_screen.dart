@@ -22,10 +22,7 @@ class PixelsProfileEditorScreen extends StatefulWidget {
     PixelProfileDomain domain,
     PixelDieService? dieService,
     PixelProfile profile,
-  ) =>
-      PixelsProfileEditorScreen(
-        viewModel: PixelsProfileEditorViewModel(domain, dieService, profile),
-      );
+  ) => PixelsProfileEditorScreen(viewModel: PixelsProfileEditorViewModel(domain, dieService, profile));
 
   final PixelsProfileEditorViewModel viewModel;
 
@@ -58,8 +55,7 @@ class _PixelsProfileEditorScreenState extends State<PixelsProfileEditorScreen> {
     if (!mounted) return;
     final msg = _vm.statusMessage;
     if (msg != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 1)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 1)));
     }
   }
 
@@ -100,11 +96,15 @@ class _PixelsProfileEditorScreenState extends State<PixelsProfileEditorScreen> {
   Future<PixelAnimation?> _showAnimationEditor(PixelAnimation? existing, {int? editIndex}) {
     return showDialog<PixelAnimation>(
       context: context,
-      builder: (_) => _AnimationEditorDialog(
-        animation: existing,
-        animCount: _vm.animations.length,
-        onPreview: _vm.canPreview ? (anim) => _runPreview(() => _vm.previewInContext(anim, replaceIndex: editIndex)) : null,
-      ),
+      builder:
+          (_) => _AnimationEditorDialog(
+            animation: existing,
+            animCount: _vm.animations.length,
+            onPreview:
+                _vm.canPreview
+                    ? (anim) => _runPreview(() => _vm.previewInContext(anim, replaceIndex: editIndex))
+                    : null,
+          ),
     );
   }
 
@@ -112,9 +112,7 @@ class _PixelsProfileEditorScreenState extends State<PixelsProfileEditorScreen> {
 
   Future<void> _addRule() async {
     if (_vm.animations.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one animation first')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add at least one animation first')));
       return;
     }
     final result = await _showRuleEditor(null);
@@ -129,10 +127,7 @@ class _PixelsProfileEditorScreenState extends State<PixelsProfileEditorScreen> {
   Future<PixelRule?> _showRuleEditor(PixelRule? existing) {
     return showDialog<PixelRule>(
       context: context,
-      builder: (_) => _RuleEditorDialog(
-        rule: existing,
-        animationCount: _vm.animations.length,
-      ),
+      builder: (_) => _RuleEditorDialog(rule: existing, animationCount: _vm.animations.length),
     );
   }
 
@@ -141,115 +136,110 @@ class _PixelsProfileEditorScreenState extends State<PixelsProfileEditorScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
-        actions: [
-          TextButton(onPressed: _save, child: const Text('Save')),
-        ],
+        actions: [TextButton(onPressed: _save, child: const Text('Save'))],
       ),
       body: ListenableBuilder(
         listenable: _vm,
-        builder: (context, _) => ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Profile name
-            TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Profile Name'),
-            ),
-            const SizedBox(height: 24),
-
-            // Animations section
-            Row(
+        builder:
+            (context, _) => ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                const Expanded(child: Text('Animations', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-                TextButton.icon(
-                  onPressed: _importAnimation,
-                  icon: const Icon(Icons.download, size: 18),
-                  label: const Text('Import'),
+                // Profile name
+                TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Profile Name')),
+                const SizedBox(height: 24),
+
+                // Animations section
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text('Animations', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                    TextButton.icon(
+                      onPressed: _importAnimation,
+                      icon: const Icon(Icons.download, size: 18),
+                      label: const Text('Import'),
+                    ),
+                    TextButton.icon(
+                      onPressed: _addAnimation,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add'),
+                    ),
+                  ],
                 ),
-                TextButton.icon(
-                  onPressed: _addAnimation,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add'),
+                if (_vm.animations.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text('No animations yet.', style: TextStyle(color: Colors.grey)),
+                  ),
+                ...List.generate(_vm.animations.length, (i) {
+                  final anim = _vm.animations[i];
+                  return Card(
+                    child: ListTile(
+                      leading: _AnimationIcon(anim),
+                      title: Text(_animLabel(i, anim)),
+                      subtitle: Text(_animSubtitle(anim)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_vm.canPreview)
+                            IconButton(
+                              icon: const Icon(Icons.play_circle_outline, size: 20),
+                              tooltip: 'Preview on die',
+                              onPressed:
+                                  _vm.preview.running
+                                      ? null
+                                      : () => _runPreview(() => _vm.preview.execute(_vm.animations, i)),
+                            ),
+                          IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () => _editAnimation(i)),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: () => _vm.deleteAnimation(i),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 24),
+
+                // Rules section
+                Row(
+                  children: [
+                    const Expanded(child: Text('Rules', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                    TextButton.icon(
+                      onPressed: _addRule,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add'),
+                    ),
+                  ],
                 ),
+                if (_vm.rules.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text('No rules yet.', style: TextStyle(color: Colors.grey)),
+                  ),
+                ...List.generate(_vm.rules.length, (i) {
+                  final rule = _vm.rules[i];
+                  return Card(
+                    child: ListTile(
+                      title: Text('When: ${rule.condition.displayName}'),
+                      subtitle: Text(_ruleSubtitle(rule)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () => _editRule(i)),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: () => _vm.deleteRule(i),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
-            if (_vm.animations.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('No animations yet.', style: TextStyle(color: Colors.grey)),
-              ),
-            ...List.generate(_vm.animations.length, (i) {
-              final anim = _vm.animations[i];
-              return Card(
-                child: ListTile(
-                  leading: _AnimationIcon(anim),
-                  title: Text(_animLabel(i, anim)),
-                  subtitle: Text(_animSubtitle(anim)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_vm.canPreview)
-                        IconButton(
-                          icon: const Icon(Icons.play_circle_outline, size: 20),
-                          tooltip: 'Preview on die',
-                          onPressed: _vm.preview.running ? null : () => _runPreview(() => _vm.preview.execute(_vm.animations, i)),
-                        ),
-                      IconButton(
-                        icon: const Icon(Icons.edit, size: 20),
-                        onPressed: () => _editAnimation(i),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20),
-                        onPressed: () => _vm.deleteAnimation(i),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-
-            const SizedBox(height: 24),
-
-            // Rules section
-            Row(
-              children: [
-                const Expanded(child: Text('Rules', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-                TextButton.icon(
-                  onPressed: _addRule,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add'),
-                ),
-              ],
-            ),
-            if (_vm.rules.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('No rules yet.', style: TextStyle(color: Colors.grey)),
-              ),
-            ...List.generate(_vm.rules.length, (i) {
-              final rule = _vm.rules[i];
-              return Card(
-                child: ListTile(
-                  title: Text('When: ${rule.condition.displayName}'),
-                  subtitle: Text(_ruleSubtitle(rule)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, size: 20),
-                        onPressed: () => _editRule(i),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20),
-                        onPressed: () => _vm.deleteRule(i),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ],
-        ),
       ),
     );
   }
@@ -257,38 +247,40 @@ class _PixelsProfileEditorScreenState extends State<PixelsProfileEditorScreen> {
   String _animLabel(int i, PixelAnimation anim) => 'Animation ${i + 1}: ${_animTypeName(anim)}';
 
   String _ruleSubtitle(PixelRule rule) {
-    final actions = rule.actions.map((a) {
-      if (a is PixelActionPlayAnimation) return 'Play animation ${a.animIndex + 1}';
-      return 'Action';
-    }).join(', ');
+    final actions = rule.actions
+        .map((a) {
+          if (a is PixelActionPlayAnimation) return 'Play animation ${a.animIndex + 1}';
+          return 'Action';
+        })
+        .join(', ');
     return 'Then: $actions';
   }
 }
 
 String _animTypeName(PixelAnimation anim) => switch (anim) {
-  PixelAnimationSimple _          => 'Solid Flash',
-  PixelAnimationRainbow _         => 'Rainbow',
-  PixelAnimationGradient _        => 'Flow',
-  PixelAnimationCycle _           => 'Color Cycle',
-  PixelAnimationNoise _           => 'Noise',
-  PixelAnimationNormals _         => 'Normals',
-  PixelAnimationSequence _        => 'Sequence',
-  PixelAnimationKeyframed _       => 'Keyframed',
+  PixelAnimationSimple _ => 'Solid Flash',
+  PixelAnimationRainbow _ => 'Rainbow',
+  PixelAnimationGradient _ => 'Flow',
+  PixelAnimationCycle _ => 'Color Cycle',
+  PixelAnimationNoise _ => 'Noise',
+  PixelAnimationNormals _ => 'Normals',
+  PixelAnimationSequence _ => 'Sequence',
+  PixelAnimationKeyframed _ => 'Keyframed',
   PixelAnimationGradientPattern _ => 'Gradient Pattern',
-  _                               => 'Custom',
+  _ => 'Custom',
 };
 
 String _animSubtitle(PixelAnimation anim) => switch (anim) {
-  PixelAnimationSimple s   => '${s.durationMs}ms · rgb(${s.color.r},${s.color.g},${s.color.b}) · ×${s.count}',
-  PixelAnimationRainbow r  => '${r.durationMs}ms · intensity ${r.intensity}',
+  PixelAnimationSimple s => '${s.durationMs}ms · rgb(${s.color.r},${s.color.g},${s.color.b}) · ×${s.count}',
+  PixelAnimationRainbow r => '${r.durationMs}ms · intensity ${r.intensity}',
   PixelAnimationGradient g => '${g.durationMs}ms · flow',
-  PixelAnimationCycle c    => '${c.durationMs}ms · intensity ${c.intensity}',
-  PixelAnimationNoise n    => '${n.durationMs}ms · noise',
-  PixelAnimationNormals n  => '${n.durationMs}ms · directional',
-  PixelAnimationSequence s        => '${s.entries.length} part${s.entries.length == 1 ? '' : 's'}',
-  PixelAnimationKeyframed k       => '${k.durationMs}ms · ${k.pattern?.name ?? 'no pattern'}',
+  PixelAnimationCycle c => '${c.durationMs}ms · intensity ${c.intensity}',
+  PixelAnimationNoise n => '${n.durationMs}ms · noise',
+  PixelAnimationNormals n => '${n.durationMs}ms · directional',
+  PixelAnimationSequence s => '${s.entries.length} part${s.entries.length == 1 ? '' : 's'}',
+  PixelAnimationKeyframed k => '${k.durationMs}ms · ${k.pattern?.name ?? 'no pattern'}',
   PixelAnimationGradientPattern g => '${g.durationMs}ms · ${g.pattern?.name ?? 'no pattern'}',
-  _                               => '',
+  _ => '',
 };
 
 /// Bottom sheet listing every built-in profile's animations; tapping one pops
@@ -313,10 +305,7 @@ class _ImportAnimationSheet extends StatelessWidget {
           Flexible(
             child: ListView(
               shrinkWrap: true,
-              children: [
-                for (final preset in profiles)
-                  _ImportProfileTile(preset: preset, dieType: dieType),
-              ],
+              children: [for (final preset in profiles) _ImportProfileTile(preset: preset, dieType: dieType)],
             ),
           ),
         ],
@@ -368,20 +357,17 @@ class _AnimationIcon extends StatelessWidget {
       return CircleAvatar(backgroundColor: Color.fromARGB(255, c.r, c.g, c.b));
     }
     final (icon, color) = switch (anim) {
-      PixelAnimationRainbow _         => (Icons.auto_awesome, Colors.purple),
-      PixelAnimationGradient _        => (Icons.water, Colors.blue),
-      PixelAnimationCycle _           => (Icons.loop, Colors.teal),
-      PixelAnimationNoise _           => (Icons.grain, Colors.blueGrey),
-      PixelAnimationNormals _         => (Icons.layers, Colors.indigo),
-      PixelAnimationSequence _        => (Icons.playlist_play, Colors.orange),
-      PixelAnimationKeyframed _       => (Icons.timeline, Colors.deepPurple),
+      PixelAnimationRainbow _ => (Icons.auto_awesome, Colors.purple),
+      PixelAnimationGradient _ => (Icons.water, Colors.blue),
+      PixelAnimationCycle _ => (Icons.loop, Colors.teal),
+      PixelAnimationNoise _ => (Icons.grain, Colors.blueGrey),
+      PixelAnimationNormals _ => (Icons.layers, Colors.indigo),
+      PixelAnimationSequence _ => (Icons.playlist_play, Colors.orange),
+      PixelAnimationKeyframed _ => (Icons.timeline, Colors.deepPurple),
       PixelAnimationGradientPattern _ => (Icons.gradient, Colors.cyan),
-      _                               => (Icons.timeline, Colors.grey),
+      _ => (Icons.timeline, Colors.grey),
     };
-    return CircleAvatar(
-      backgroundColor: color.withValues(alpha: 0.2),
-      child: Icon(icon, color: color, size: 16),
-    );
+    return CircleAvatar(backgroundColor: color.withValues(alpha: 0.2), child: Icon(icon, color: color, size: 16));
   }
 }
 
@@ -401,18 +387,22 @@ class _GradState {
 
   _GradState({
     this.preset = _GradPreset.rainbow,
-    this.r1 = 255, this.g1 = 0, this.b1 = 0,
-    this.r2 = 0,   this.g2 = 0, this.b2 = 255,
+    this.r1 = 255,
+    this.g1 = 0,
+    this.b1 = 0,
+    this.r2 = 0,
+    this.g2 = 0,
+    this.b2 = 255,
     this.original,
   });
 
   PixelGradient build() => switch (preset) {
-    _GradPreset.rainbow  => PixelGradient.rainbow,
-    _GradPreset.fire     => PixelGradient.fire,
-    _GradPreset.water    => PixelGradient.water,
-    _GradPreset.solid    => PixelGradient.solid(PixelColor(r1, g1, b1)),
+    _GradPreset.rainbow => PixelGradient.rainbow,
+    _GradPreset.fire => PixelGradient.fire,
+    _GradPreset.water => PixelGradient.water,
+    _GradPreset.solid => PixelGradient.solid(PixelColor(r1, g1, b1)),
     _GradPreset.twoColor => PixelGradient.twoColor(PixelColor(r1, g1, b1), PixelColor(r2, g2, b2)),
-    _GradPreset.custom   => original ?? PixelGradient.rainbow,
+    _GradPreset.custom => original ?? PixelGradient.rainbow,
   };
 
   static bool _matches(PixelGradient a, PixelGradient b) {
@@ -426,8 +416,8 @@ class _GradState {
   static _GradState fromGradient(PixelGradient g) {
     // Exact matches against the authorable presets first.
     if (_matches(g, PixelGradient.rainbow)) return _GradState(preset: _GradPreset.rainbow);
-    if (_matches(g, PixelGradient.fire))    return _GradState(preset: _GradPreset.fire);
-    if (_matches(g, PixelGradient.water))   return _GradState(preset: _GradPreset.water);
+    if (_matches(g, PixelGradient.fire)) return _GradState(preset: _GradPreset.fire);
+    if (_matches(g, PixelGradient.water)) return _GradState(preset: _GradPreset.water);
     final kfs = g.keyframes;
     if (kfs.length == 2) {
       final c = kfs[0].$2;
@@ -570,7 +560,9 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
     } else {
       _type = _AnimType.solid;
       if (a is PixelAnimationSimple) {
-        _r = a.color.r; _g = a.color.g; _b = a.color.b;
+        _r = a.color.r;
+        _g = a.color.g;
+        _b = a.color.b;
         _durationMs = a.durationMs;
         _count = a.count;
         _fade = a.fade;
@@ -623,60 +615,46 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
   PixelAnimation _buildTyped() {
     return switch (_type) {
       _AnimType.solid => PixelAnimationSimple(
-          durationMs: _durationMs,
-          color: PixelColor(_r, _g, _b),
-          count: _count,
-          fade: _fade,
-        ),
-      _AnimType.rainbow => PixelAnimationRainbow(
-          durationMs: _rainbowDuration,
-          intensity: _intensity,
-        ),
-      _AnimType.blinkId => PixelAnimationBlinkId(
-          durationMs: _blinkIdDuration,
-          framesPerBlink: _framesPerBlink,
-        ),
-      _AnimType.gradient => PixelAnimationGradient(
-          durationMs: _gradFlowDuration,
-          gradient: _gradFlowGrad.build(),
-        ),
+        durationMs: _durationMs,
+        color: PixelColor(_r, _g, _b),
+        count: _count,
+        fade: _fade,
+      ),
+      _AnimType.rainbow => PixelAnimationRainbow(durationMs: _rainbowDuration, intensity: _intensity),
+      _AnimType.blinkId => PixelAnimationBlinkId(durationMs: _blinkIdDuration, framesPerBlink: _framesPerBlink),
+      _AnimType.gradient => PixelAnimationGradient(durationMs: _gradFlowDuration, gradient: _gradFlowGrad.build()),
       _AnimType.cycle => PixelAnimationCycle(
-          durationMs: _cycleDuration,
-          count: _cycleCount,
-          fade: _cycleFade,
-          intensity: _cycleIntensity,
-          cyclesTimes10: _cyclesTimes10,
-          gradient: _cycleGrad.build(),
-        ),
+        durationMs: _cycleDuration,
+        count: _cycleCount,
+        fade: _cycleFade,
+        intensity: _cycleIntensity,
+        cyclesTimes10: _cyclesTimes10,
+        gradient: _cycleGrad.build(),
+      ),
       _AnimType.noise => PixelAnimationNoise(
-          durationMs: _noiseDuration,
-          fade: _noiseFade,
-          gradient: _noiseGrad.build(),
-          blinkGradient: _noiseBlinkGrad.build(),
-          blinkFrequencyTimes1000: _blinkFreqTimes1000,
-          blinkFrequencyVarTimes1000: (_blinkFreqTimes1000 * 0.5).round(),
-          blinkDuration: _blinkDuration,
-        ),
+        durationMs: _noiseDuration,
+        fade: _noiseFade,
+        gradient: _noiseGrad.build(),
+        blinkGradient: _noiseBlinkGrad.build(),
+        blinkFrequencyTimes1000: _blinkFreqTimes1000,
+        blinkFrequencyVarTimes1000: (_blinkFreqTimes1000 * 0.5).round(),
+        blinkDuration: _blinkDuration,
+      ),
       _AnimType.normals => PixelAnimationNormals(
-          durationMs: _normDuration,
-          fade: _normFade,
-          gradient: _normGrad.build(),
-          axisScaleTimes1000: _axisScaleTimes1000,
-          axisScrollSpeedTimes1000: _axisScrollTimes1000,
-          angleScrollSpeedTimes1000: _angleScrollTimes1000,
-        ),
-      _AnimType.sequence => PixelAnimationSequence(
-          entries: List.of(_seqEntries),
-        ),
-      _AnimType.keyframed => PixelAnimationKeyframed(
-          durationMs: _keyframedDuration,
-          pattern: _keyframedPattern,
-        ),
+        durationMs: _normDuration,
+        fade: _normFade,
+        gradient: _normGrad.build(),
+        axisScaleTimes1000: _axisScaleTimes1000,
+        axisScrollSpeedTimes1000: _axisScrollTimes1000,
+        angleScrollSpeedTimes1000: _angleScrollTimes1000,
+      ),
+      _AnimType.sequence => PixelAnimationSequence(entries: List.of(_seqEntries)),
+      _AnimType.keyframed => PixelAnimationKeyframed(durationMs: _keyframedDuration, pattern: _keyframedPattern),
       _AnimType.gradientPattern => PixelAnimationGradientPattern(
-          durationMs: _gpDuration,
-          pattern: _gpPattern,
-          gradient: _gpGrad.build(),
-        ),
+        durationMs: _gpDuration,
+        pattern: _gpPattern,
+        gradient: _gpGrad.build(),
+      ),
     };
   }
 
@@ -685,20 +663,22 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
   List<Widget> _gradSection(String label, _GradState s) {
     return [
       DropdownButtonFormField<_GradPreset>(
-        value: s.preset,
+        initialValue: s.preset,
         decoration: InputDecoration(labelText: label),
         items: [
-          const DropdownMenuItem(value: _GradPreset.rainbow,  child: Text('Rainbow')),
-          const DropdownMenuItem(value: _GradPreset.fire,     child: Text('Fire')),
-          const DropdownMenuItem(value: _GradPreset.water,    child: Text('Water')),
-          const DropdownMenuItem(value: _GradPreset.solid,    child: Text('Solid Color')),
+          const DropdownMenuItem(value: _GradPreset.rainbow, child: Text('Rainbow')),
+          const DropdownMenuItem(value: _GradPreset.fire, child: Text('Fire')),
+          const DropdownMenuItem(value: _GradPreset.water, child: Text('Water')),
+          const DropdownMenuItem(value: _GradPreset.solid, child: Text('Solid Color')),
           const DropdownMenuItem(value: _GradPreset.twoColor, child: Text('Two Color')),
           // Only selectable when the source gradient isn't an authorable preset;
           // picking another option replaces it (a custom gradient editor is TODO).
           if (s.preset == _GradPreset.custom)
             const DropdownMenuItem(value: _GradPreset.custom, child: Text('Custom (from source)')),
         ],
-        onChanged: (v) { if (v != null) setState(() => s.preset = v); },
+        onChanged: (v) {
+          if (v != null) setState(() => s.preset = v);
+        },
       ),
       if (s.preset == _GradPreset.custom)
         const Padding(
@@ -760,10 +740,11 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final availableTypes = _AnimType.values.where((t) {
-      if (t == _AnimType.sequence && widget.animCount == 0) return false;
-      return true;
-    }).toList();
+    final availableTypes =
+        _AnimType.values.where((t) {
+          if (t == _AnimType.sequence && widget.animCount == 0) return false;
+          return true;
+        }).toList();
 
     return AlertDialog(
       title: const Text('Edit Animation'),
@@ -774,24 +755,31 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
           children: [
             // ── Type selector ──────────────────────────────────────────────
             DropdownButtonFormField<_AnimType>(
-              value: _type,
+              initialValue: _type,
               decoration: const InputDecoration(labelText: 'Type'),
-              items: availableTypes.map((t) => DropdownMenuItem(
-                value: t,
-                child: Text(switch (t) {
-                  _AnimType.solid           => 'Solid Flash',
-                  _AnimType.rainbow         => 'Rainbow',
-                  _AnimType.blinkId         => 'Blink ID',
-                  _AnimType.gradient        => 'Flow',
-                  _AnimType.cycle           => 'Color Cycle',
-                  _AnimType.noise           => 'Noise',
-                  _AnimType.normals         => 'Normals',
-                  _AnimType.sequence        => 'Sequence',
-                  _AnimType.keyframed       => 'Keyframed',
-                  _AnimType.gradientPattern => 'Gradient Pattern',
-                }),
-              )).toList(),
-              onChanged: (v) { if (v != null) setState(() => _type = v); },
+              items:
+                  availableTypes
+                      .map(
+                        (t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(switch (t) {
+                            _AnimType.solid => 'Solid Flash',
+                            _AnimType.rainbow => 'Rainbow',
+                            _AnimType.blinkId => 'Blink ID',
+                            _AnimType.gradient => 'Flow',
+                            _AnimType.cycle => 'Color Cycle',
+                            _AnimType.noise => 'Noise',
+                            _AnimType.normals => 'Normals',
+                            _AnimType.sequence => 'Sequence',
+                            _AnimType.keyframed => 'Keyframed',
+                            _AnimType.gradientPattern => 'Gradient Pattern',
+                          }),
+                        ),
+                      )
+                      .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _type = v);
+              },
             ),
             const SizedBox(height: 16),
 
@@ -817,7 +805,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
                   Expanded(
                     child: Slider(
                       value: _fade.toDouble(),
-                      min: 0, max: 255,
+                      min: 0,
+                      max: 255,
                       onChanged: (v) => setState(() => _fade = v.round()),
                     ),
                   ),
@@ -845,7 +834,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
                   Expanded(
                     child: Slider(
                       value: _intensity.toDouble(),
-                      min: 0, max: 255,
+                      min: 0,
+                      max: 255,
                       onChanged: (v) => setState(() => _intensity = v.round()),
                     ),
                   ),
@@ -885,7 +875,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
                   Expanded(
                     child: Slider(
                       value: _cycleIntensity.toDouble(),
-                      min: 0, max: 255,
+                      min: 0,
+                      max: 255,
                       onChanged: (v) => setState(() => _cycleIntensity = v.round()),
                     ),
                   ),
@@ -898,7 +889,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
                   Expanded(
                     child: Slider(
                       value: _cyclesTimes10.toDouble(),
-                      min: 1, max: 50,
+                      min: 1,
+                      max: 50,
                       onChanged: (v) => setState(() => _cyclesTimes10 = v.round()),
                     ),
                   ),
@@ -911,7 +903,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
                   Expanded(
                     child: Slider(
                       value: _cycleFade.toDouble(),
-                      min: 0, max: 255,
+                      min: 0,
+                      max: 255,
                       onChanged: (v) => setState(() => _cycleFade = v.round()),
                     ),
                   ),
@@ -932,7 +925,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
                   Expanded(
                     child: Slider(
                       value: _noiseFade.toDouble(),
-                      min: 0, max: 255,
+                      min: 0,
+                      max: 255,
                       onChanged: (v) => setState(() => _noiseFade = v.round()),
                     ),
                   ),
@@ -950,7 +944,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
                   Expanded(
                     child: Slider(
                       value: _blinkFreqTimes1000.toDouble(),
-                      min: 200, max: 5000,
+                      min: 200,
+                      max: 5000,
                       onChanged: (v) => setState(() => _blinkFreqTimes1000 = v.round()),
                     ),
                   ),
@@ -970,7 +965,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
                   Expanded(
                     child: Slider(
                       value: _normFade.toDouble(),
-                      min: 0, max: 255,
+                      min: 0,
+                      max: 255,
                       onChanged: (v) => setState(() => _normFade = v.round()),
                     ),
                   ),
@@ -988,7 +984,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
               ),
               Slider(
                 value: _axisScaleTimes1000.toDouble(),
-                min: 100, max: 3000,
+                min: 100,
+                max: 3000,
                 onChanged: (v) => setState(() => _axisScaleTimes1000 = v.round()),
               ),
               Row(
@@ -999,7 +996,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
               ),
               Slider(
                 value: _axisScrollTimes1000.toDouble(),
-                min: -3000, max: 3000,
+                min: -3000,
+                max: 3000,
                 onChanged: (v) => setState(() => _axisScrollTimes1000 = v.round()),
               ),
               Row(
@@ -1010,7 +1008,8 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
               ),
               Slider(
                 value: _angleScrollTimes1000.toDouble(),
-                min: -3000, max: 3000,
+                min: -3000,
+                max: 3000,
                 onChanged: (v) => setState(() => _angleScrollTimes1000 = v.round()),
               ),
             ],
@@ -1020,7 +1019,7 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
               _intField('Duration (ms)', _keyframedDuration, 100, 10000, (v) => _keyframedDuration = v),
               const SizedBox(height: 8),
               DropdownButtonFormField<PixelPattern?>(
-                value: _keyframedPattern,
+                initialValue: _keyframedPattern,
                 decoration: const InputDecoration(labelText: 'Pattern'),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('— none —')),
@@ -1035,7 +1034,7 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
               _intField('Duration (ms)', _gpDuration, 100, 10000, (v) => _gpDuration = v),
               const SizedBox(height: 8),
               DropdownButtonFormField<PixelPattern?>(
-                value: _gpPattern,
+                initialValue: _gpPattern,
                 decoration: const InputDecoration(labelText: 'Pattern'),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('— none —')),
@@ -1049,10 +1048,7 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
 
             // ── Sequence ───────────────────────────────────────────────────
             if (_type == _AnimType.sequence) ...[
-              const Text(
-                'Plays up to 4 animations in sequence.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
+              const Text('Plays up to 4 animations in sequence.', style: TextStyle(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 8),
               ..._seqEntries.asMap().entries.map((e) {
                 final idx = e.key;
@@ -1065,16 +1061,16 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: DropdownButtonFormField<int>(
-                          value: animIdx.clamp(0, widget.animCount - 1),
+                          initialValue: animIdx.clamp(0, widget.animCount - 1),
                           decoration: const InputDecoration(
                             labelText: 'Animation',
                             isDense: true,
                             contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                           ),
-                          items: List.generate(widget.animCount, (i) => DropdownMenuItem(
-                            value: i,
-                            child: Text('Anim ${i + 1}'),
-                          )),
+                          items: List.generate(
+                            widget.animCount,
+                            (i) => DropdownMenuItem(value: i, child: Text('Anim ${i + 1}')),
+                          ),
                           onChanged: (v) {
                             if (v != null) setState(() => _seqEntries[idx] = (v, delayMs));
                           },
@@ -1119,16 +1115,17 @@ class _AnimationEditorDialogState extends State<_AnimationEditorDialog> {
       actions: [
         if (widget.onPreview != null)
           TextButton.icon(
-            onPressed: _previewBusy
-                ? null
-                : () async {
-                    setState(() => _previewBusy = true);
-                    try {
-                      await widget.onPreview!(_build());
-                    } finally {
-                      if (mounted) setState(() => _previewBusy = false);
-                    }
-                  },
+            onPressed:
+                _previewBusy
+                    ? null
+                    : () async {
+                      setState(() => _previewBusy = true);
+                      try {
+                        await widget.onPreview!(_build());
+                      } finally {
+                        if (mounted) setState(() => _previewBusy = false);
+                      }
+                    },
             icon: const Icon(Icons.play_circle_outline, size: 18),
             label: const Text('Preview'),
           ),
@@ -1217,9 +1214,7 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
       if (action != null) {
         // Guard the clamp: animationCount-1 == -1 when the profile has no
         // animations (all deleted), which would make clamp(0, -1) throw.
-        _animIndex = widget.animationCount > 0
-            ? action.animIndex.clamp(0, widget.animationCount - 1)
-            : 0;
+        _animIndex = widget.animationCount > 0 ? action.animIndex.clamp(0, widget.animationCount - 1) : 0;
         _loopCount = action.loopCount;
       }
     }
@@ -1227,14 +1222,14 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
 
   PixelRule _build() {
     final PixelCondition cond = switch (_condType) {
-      _CondType.rolled       => PixelConditionRolled(faceMask: _faceMask),
-      _CondType.rolling      => PixelConditionRolling(repeatPeriodMs: _rollingPeriodMs),
+      _CondType.rolled => PixelConditionRolled(faceMask: _faceMask),
+      _CondType.rolling => PixelConditionRolling(repeatPeriodMs: _rollingPeriodMs),
       _CondType.helloGoodbye => PixelConditionHelloGoodbye(flags: _helloFlags),
-      _CondType.handling     => PixelConditionHandling(),
-      _CondType.crooked      => PixelConditionCrooked(),
-      _CondType.idle         => PixelConditionIdle(repeatPeriodMs: _idlePeriodMs),
-      _CondType.battery      => PixelConditionBatteryState(flags: _battFlags, repeatPeriodMs: _battPeriodMs),
-      _CondType.connection   => PixelConditionConnectionState(flags: _connFlags),
+      _CondType.handling => PixelConditionHandling(),
+      _CondType.crooked => PixelConditionCrooked(),
+      _CondType.idle => PixelConditionIdle(repeatPeriodMs: _idlePeriodMs),
+      _CondType.battery => PixelConditionBatteryState(flags: _battFlags, repeatPeriodMs: _battPeriodMs),
+      _CondType.connection => PixelConditionConnectionState(flags: _connFlags),
     };
     return PixelRule(
       condition: cond,
@@ -1254,18 +1249,20 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
             const Text('Condition', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             DropdownButtonFormField<_CondType>(
-              value: _condType,
+              initialValue: _condType,
               items: const [
-                DropdownMenuItem(value: _CondType.rolled,       child: Text('Rolled (face landed)')),
-                DropdownMenuItem(value: _CondType.rolling,      child: Text('Rolling (in motion)')),
+                DropdownMenuItem(value: _CondType.rolled, child: Text('Rolled (face landed)')),
+                DropdownMenuItem(value: _CondType.rolling, child: Text('Rolling (in motion)')),
                 DropdownMenuItem(value: _CondType.helloGoodbye, child: Text('Hello / Goodbye')),
-                DropdownMenuItem(value: _CondType.handling,     child: Text('Handling (picked up)')),
-                DropdownMenuItem(value: _CondType.crooked,      child: Text('Crooked (landed askew)')),
-                DropdownMenuItem(value: _CondType.idle,         child: Text('Idle (resting)')),
-                DropdownMenuItem(value: _CondType.battery,      child: Text('Battery state')),
-                DropdownMenuItem(value: _CondType.connection,   child: Text('Connection (BLE)')),
+                DropdownMenuItem(value: _CondType.handling, child: Text('Handling (picked up)')),
+                DropdownMenuItem(value: _CondType.crooked, child: Text('Crooked (landed askew)')),
+                DropdownMenuItem(value: _CondType.idle, child: Text('Idle (resting)')),
+                DropdownMenuItem(value: _CondType.battery, child: Text('Battery state')),
+                DropdownMenuItem(value: _CondType.connection, child: Text('Connection (BLE)')),
               ],
-              onChanged: (v) { if (v != null) setState(() => _condType = v); },
+              onChanged: (v) {
+                if (v != null) setState(() => _condType = v);
+              },
             ),
             const SizedBox(height: 8),
             if (_condType == _CondType.rolled) ...[
@@ -1280,18 +1277,15 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
                 },
               ),
               const SizedBox(height: 4),
-              _FaceMaskChips(
-                mask: _faceMask,
-                faces: 20,
-                onChanged: (m) => setState(() => _faceMask = m),
-              ),
+              _FaceMaskChips(mask: _faceMask, faces: 20, onChanged: (m) => setState(() => _faceMask = m)),
             ],
             if (_condType == _CondType.rolling) ...[
               const SizedBox(height: 8),
               Text('Repeat period: $_rollingPeriodMs ms'),
               Slider(
                 value: _rollingPeriodMs.toDouble(),
-                min: 100, max: 2000,
+                min: 100,
+                max: 2000,
                 divisions: 19,
                 onChanged: (v) => setState(() => _rollingPeriodMs = v.round()),
               ),
@@ -1301,20 +1295,22 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
               CheckboxListTile(
                 title: const Text('On Hello (wake up)'),
                 value: (_helloFlags & PixelHelloFlags.hello) != 0,
-                onChanged: (v) => setState(() {
-                  _helloFlags = (v == true)
-                      ? (_helloFlags | PixelHelloFlags.hello)
-                      : (_helloFlags & ~PixelHelloFlags.hello);
-                }),
+                onChanged:
+                    (v) => setState(() {
+                      _helloFlags =
+                          (v == true) ? (_helloFlags | PixelHelloFlags.hello) : (_helloFlags & ~PixelHelloFlags.hello);
+                    }),
               ),
               CheckboxListTile(
                 title: const Text('On Goodbye (sleep)'),
                 value: (_helloFlags & PixelHelloFlags.goodbye) != 0,
-                onChanged: (v) => setState(() {
-                  _helloFlags = (v == true)
-                      ? (_helloFlags | PixelHelloFlags.goodbye)
-                      : (_helloFlags & ~PixelHelloFlags.goodbye);
-                }),
+                onChanged:
+                    (v) => setState(() {
+                      _helloFlags =
+                          (v == true)
+                              ? (_helloFlags | PixelHelloFlags.goodbye)
+                              : (_helloFlags & ~PixelHelloFlags.goodbye);
+                    }),
               ),
             ],
             if (_condType == _CondType.crooked) ...[
@@ -1329,7 +1325,8 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
               Text('Repeat period: ${_idlePeriodMs == 0 ? "once" : "$_idlePeriodMs ms"}'),
               Slider(
                 value: _idlePeriodMs.toDouble(),
-                min: 0, max: 30000,
+                min: 0,
+                max: 30000,
                 divisions: 30,
                 onChanged: (v) => setState(() => _idlePeriodMs = v.round()),
               ),
@@ -1347,14 +1344,16 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
                   dense: true,
                   title: Text(label),
                   value: (_battFlags & flag) != 0,
-                  onChanged: (v) => setState(() {
-                    _battFlags = (v == true) ? (_battFlags | flag) : (_battFlags & ~flag);
-                  }),
+                  onChanged:
+                      (v) => setState(() {
+                        _battFlags = (v == true) ? (_battFlags | flag) : (_battFlags & ~flag);
+                      }),
                 ),
               Text('Recheck period: $_battPeriodMs ms'),
               Slider(
                 value: _battPeriodMs.toDouble(),
-                min: 0, max: 30000,
+                min: 0,
+                max: 30000,
                 divisions: 30,
                 onChanged: (v) => setState(() => _battPeriodMs = v.round()),
               ),
@@ -1365,21 +1364,25 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
                 dense: true,
                 title: const Text('On connect'),
                 value: (_connFlags & PixelConnectionFlags.connected) != 0,
-                onChanged: (v) => setState(() {
-                  _connFlags = (v == true)
-                      ? (_connFlags | PixelConnectionFlags.connected)
-                      : (_connFlags & ~PixelConnectionFlags.connected);
-                }),
+                onChanged:
+                    (v) => setState(() {
+                      _connFlags =
+                          (v == true)
+                              ? (_connFlags | PixelConnectionFlags.connected)
+                              : (_connFlags & ~PixelConnectionFlags.connected);
+                    }),
               ),
               CheckboxListTile(
                 dense: true,
                 title: const Text('On disconnect'),
                 value: (_connFlags & PixelConnectionFlags.disconnected) != 0,
-                onChanged: (v) => setState(() {
-                  _connFlags = (v == true)
-                      ? (_connFlags | PixelConnectionFlags.disconnected)
-                      : (_connFlags & ~PixelConnectionFlags.disconnected);
-                }),
+                onChanged:
+                    (v) => setState(() {
+                      _connFlags =
+                          (v == true)
+                              ? (_connFlags | PixelConnectionFlags.disconnected)
+                              : (_connFlags & ~PixelConnectionFlags.disconnected);
+                    }),
               ),
             ],
             const SizedBox(height: 16),
@@ -1387,19 +1390,22 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
             const SizedBox(height: 8),
             if (widget.animationCount > 0) ...[
               DropdownButtonFormField<int>(
-                value: _animIndex.clamp(0, widget.animationCount - 1),
+                initialValue: _animIndex.clamp(0, widget.animationCount - 1),
                 decoration: const InputDecoration(labelText: 'Play Animation'),
-                items: List.generate(widget.animationCount, (i) => DropdownMenuItem(
-                  value: i,
-                  child: Text('Animation ${i + 1}'),
-                )),
-                onChanged: (v) { if (v != null) setState(() => _animIndex = v); },
+                items: List.generate(
+                  widget.animationCount,
+                  (i) => DropdownMenuItem(value: i, child: Text('Animation ${i + 1}')),
+                ),
+                onChanged: (v) {
+                  if (v != null) setState(() => _animIndex = v);
+                },
               ),
               const SizedBox(height: 8),
               Text('Loop count: $_loopCount'),
               Slider(
                 value: _loopCount.toDouble(),
-                min: 1, max: 10,
+                min: 1,
+                max: 10,
                 divisions: 9,
                 onChanged: (v) => setState(() => _loopCount = v.round()),
               ),
@@ -1423,11 +1429,7 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
 
 /// Grid of face toggle chips for building a face bitmask.
 class _FaceMaskChips extends StatelessWidget {
-  const _FaceMaskChips({
-    required this.mask,
-    required this.faces,
-    required this.onChanged,
-  });
+  const _FaceMaskChips({required this.mask, required this.faces, required this.onChanged});
 
   final int mask;
   final int faces;

@@ -35,6 +35,7 @@ define myTest for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
 
 const String _validScript2 = '''
@@ -42,6 +43,7 @@ define myOther for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
 
 Future<(AppSettingsScreenViewModel, _FailingAppService)> _buildVm() async {
@@ -50,12 +52,7 @@ Future<(AppSettingsScreenViewModel, _FailingAppService)> _buildVm() async {
   final wd = WebhookDomain(appService: app);
   final ruleParser = RuleEvaluator(dd, app, wd);
   await ruleParser.init();
-  final di = await DiWrapper.forTesting(
-    appService: app,
-    dieDomain: dd,
-    ruleParser: ruleParser,
-    webhookDomain: wd,
-  );
+  final di = await DiWrapper.forTesting(appService: app, dieDomain: dd, ruleParser: ruleParser, webhookDomain: wd);
   final vm = AppSettingsScreenViewModel(di);
   return (vm, app);
 }

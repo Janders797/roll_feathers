@@ -19,7 +19,9 @@ PixelProfile _simpleProfile({String id = 'p1', String name = 'Test'}) => PixelPr
   name: name,
   brightness: 200,
   animations: [PixelAnimationSimple(durationMs: 500, color: const PixelColor(255, 0, 0))],
-  rules: [PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)])],
+  rules: [
+    PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)]),
+  ],
 );
 
 /// In-memory [PixelProfileRepository] so widget tests need no real storage.
@@ -28,9 +30,10 @@ class _FakeProfileRepo implements PixelProfileRepository {
   @override
   Future<List<PixelProfile>> loadAll() async => List.of(items);
   @override
-  Future<void> saveAll(List<PixelProfile> profiles) async => items
-    ..clear()
-    ..addAll(profiles);
+  Future<void> saveAll(List<PixelProfile> profiles) async =>
+      items
+        ..clear()
+        ..addAll(profiles);
   @override
   Future<void> upsert(PixelProfile profile) async {
     final i = items.indexWhere((e) => e.id == profile.id);
@@ -40,14 +43,14 @@ class _FakeProfileRepo implements PixelProfileRepository {
       items.add(profile);
     }
   }
+
   @override
   Future<void> delete(String id) async => items.removeWhere((e) => e.id == id);
   @override
   List<BuiltinProfile> builtins() => kBuiltinProfiles;
 }
 
-PixelProfileDomain _domain([PixelProfileRepository? repo]) =>
-    PixelProfileDomain(repo ?? _FakeProfileRepo());
+PixelProfileDomain _domain([PixelProfileRepository? repo]) => PixelProfileDomain(repo ?? _FakeProfileRepo());
 
 // ─── PixelsProfileEditorScreen ────────────────────────────────────────────────
 
@@ -73,20 +76,23 @@ void main() {
 
     testWidgets('Save button pops with updated profile', (tester) async {
       PixelProfile? result;
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
-          builder: (ctx) => ElevatedButton(
-            onPressed: () async {
-              result = await Navigator.of(ctx).push<PixelProfile>(
-                MaterialPageRoute(
-                  builder: (_) => PixelsProfileEditorScreen.create(_domain(), null, _simpleProfile()),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder:
+                (ctx) => ElevatedButton(
+                  onPressed: () async {
+                    result = await Navigator.of(ctx).push<PixelProfile>(
+                      MaterialPageRoute(
+                        builder: (_) => PixelsProfileEditorScreen.create(_domain(), null, _simpleProfile()),
+                      ),
+                    );
+                  },
+                  child: const Text('Open'),
                 ),
-              );
-            },
-            child: const Text('Open'),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
 
@@ -129,12 +135,7 @@ void main() {
     });
 
     testWidgets('animation editor OK adds animation', (tester) async {
-      final profile = PixelProfile(
-        id: 'p2',
-        name: 'Empty',
-        animations: [],
-        rules: [],
-      );
+      final profile = PixelProfile(id: 'p2', name: 'Empty', animations: [], rules: []);
       await tester.pumpWidget(_wrap(PixelsProfileEditorScreen.create(_domain(), null, profile)));
 
       await tester.tap(find.text('Add').first);
@@ -205,22 +206,27 @@ void main() {
         id: 'c',
         name: 'cyc',
         animations: [cycle],
-        rules: [PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)])],
+        rules: [
+          PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)]),
+        ],
       );
 
       PixelProfile? saved;
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
-          builder: (ctx) => ElevatedButton(
-            onPressed: () async {
-              saved = await Navigator.of(ctx).push<PixelProfile>(
-                MaterialPageRoute(builder: (_) => PixelsProfileEditorScreen.create(_domain(), null, profile)),
-              );
-            },
-            child: const Text('Open'),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder:
+                (ctx) => ElevatedButton(
+                  onPressed: () async {
+                    saved = await Navigator.of(ctx).push<PixelProfile>(
+                      MaterialPageRoute(builder: (_) => PixelsProfileEditorScreen.create(_domain(), null, profile)),
+                    );
+                  },
+                  child: const Text('Open'),
+                ),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
 
@@ -250,7 +256,9 @@ void main() {
     testWidgets('preview button appears with a die and sends a preview', (tester) async {
       final sim = PixelsDieSimulator(name: 'TestDie');
       addTearDown(sim.dispose);
-      await tester.pumpWidget(_wrap(PixelsProfileEditorScreen.create(_domain(), PixelDieService(sim), _simpleProfile())));
+      await tester.pumpWidget(
+        _wrap(PixelsProfileEditorScreen.create(_domain(), PixelDieService(sim), _simpleProfile())),
+      );
 
       // One preview button for the single animation card.
       expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
@@ -263,7 +271,9 @@ void main() {
     testWidgets('animation dialog shows a Preview action when a die is connected', (tester) async {
       final sim = PixelsDieSimulator(name: 'TestDie');
       addTearDown(sim.dispose);
-      await tester.pumpWidget(_wrap(PixelsProfileEditorScreen.create(_domain(), PixelDieService(sim), _simpleProfile())));
+      await tester.pumpWidget(
+        _wrap(PixelsProfileEditorScreen.create(_domain(), PixelDieService(sim), _simpleProfile())),
+      );
 
       await tester.tap(find.text('Add').first);
       await tester.pumpAndSettle();
@@ -272,11 +282,7 @@ void main() {
     });
 
     testWidgets('Keyframed type shows Pattern picker', (tester) async {
-      final profile = PixelProfile(
-        id: 'k1', name: 'K',
-        animations: [],
-        rules: [],
-      );
+      final profile = PixelProfile(id: 'k1', name: 'K', animations: [], rules: []);
       await tester.pumpWidget(_wrap(PixelsProfileEditorScreen.create(_domain(), null, profile)));
 
       // Open animation editor
@@ -334,13 +340,11 @@ void main() {
 
     testWidgets('editing a rule with no animations does not crash and disables OK', (tester) async {
       final profile = PixelProfile(
-        id: 'r0', name: 'NoAnims',
+        id: 'r0',
+        name: 'NoAnims',
         animations: [],
         rules: [
-          PixelRule(
-            condition: PixelConditionRolled(),
-            actions: [PixelActionPlayAnimation(animIndex: 0)],
-          ),
+          PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)]),
         ],
       );
       await tester.pumpWidget(_wrap(PixelsProfileEditorScreen.create(_domain(), null, profile)));
@@ -357,11 +361,7 @@ void main() {
     });
 
     testWidgets('Gradient Pattern type shows Pattern picker and Color Gradient', (tester) async {
-      final profile = PixelProfile(
-        id: 'gp1', name: 'GP',
-        animations: [],
-        rules: [],
-      );
+      final profile = PixelProfile(id: 'gp1', name: 'GP', animations: [], rules: []);
       await tester.pumpWidget(_wrap(PixelsProfileEditorScreen.create(_domain(), null, profile)));
 
       await tester.tap(find.text('Add').first);
@@ -380,13 +380,9 @@ void main() {
 
     testWidgets('Keyframed anim shows subtitle with pattern name', (tester) async {
       final profile = PixelProfile(
-        id: 'k2', name: 'K',
-        animations: [
-          PixelAnimationKeyframed(
-            durationMs: 1500,
-            pattern: kBuiltinPatterns.first,
-          ),
-        ],
+        id: 'k2',
+        name: 'K',
+        animations: [PixelAnimationKeyframed(durationMs: 1500, pattern: kBuiltinPatterns.first)],
         rules: [],
       );
       await tester.pumpWidget(_wrap(PixelsProfileEditorScreen.create(_domain(), null, profile)));
@@ -398,13 +394,9 @@ void main() {
 
     testWidgets('GradientPattern anim shows subtitle with pattern name', (tester) async {
       final profile = PixelProfile(
-        id: 'gp2', name: 'GP',
-        animations: [
-          PixelAnimationGradientPattern(
-            durationMs: 2000,
-            pattern: kBuiltinPatterns.first,
-          ),
-        ],
+        id: 'gp2',
+        name: 'GP',
+        animations: [PixelAnimationGradientPattern(durationMs: 2000, pattern: kBuiltinPatterns.first)],
         rules: [],
       );
       await tester.pumpWidget(_wrap(PixelsProfileEditorScreen.create(_domain(), null, profile)));
@@ -430,10 +422,10 @@ void main() {
 
     tearDown(() => sim.dispose());
 
-    Widget _buildScreen() => _wrap(PixelsProfilesScreen.create(domain, PixelDieService(sim), 'TestDie'));
+    Widget buildScreen() => _wrap(PixelsProfilesScreen.create(domain, PixelDieService(sim), 'TestDie'));
 
     testWidgets('shows empty state when no profiles', (tester) async {
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       // Built-ins fill the viewport; scroll past them to reach the My Profiles empty state.
@@ -443,7 +435,7 @@ void main() {
 
     testWidgets('shows profile in list after save', (tester) async {
       await store.upsert(_simpleProfile());
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       // Scroll past the built-in profiles to reach the My Profiles section.
@@ -455,7 +447,7 @@ void main() {
     testWidgets('shows "on die" indicator after flash', (tester) async {
       final profile = _simpleProfile();
       await store.upsert(profile);
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       // Scroll until 'Test' card is built, then ensureVisible so the full tile is on screen.
@@ -477,14 +469,14 @@ void main() {
     });
 
     testWidgets('shows die name in app bar', (tester) async {
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       expect(find.text('Animations — TestDie'), findsOneWidget);
     });
 
     testWidgets('add button shows preset picker then editor, saves profile', (tester) async {
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       // Tap + → preset picker bottom sheet
@@ -494,10 +486,7 @@ void main() {
       expect(find.text('Choose a starting point'), findsOneWidget);
 
       // Pick "Blank profile" — sheet has its own Scrollable; scroll it specifically.
-      final sheetScrollable = find.descendant(
-        of: find.byType(BottomSheet),
-        matching: find.byType(Scrollable),
-      );
+      final sheetScrollable = find.descendant(of: find.byType(BottomSheet), matching: find.byType(Scrollable));
       await tester.scrollUntilVisible(find.text('Blank profile'), 50.0, scrollable: sheetScrollable);
       await tester.tap(find.text('Blank profile'));
       await tester.pumpAndSettle();
@@ -515,7 +504,7 @@ void main() {
     });
 
     testWidgets('add from preset creates profile with preset name', (tester) async {
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.add));
@@ -523,10 +512,7 @@ void main() {
 
       // Choose "High Low" preset — scope to the sheet because the main screen also
       // has a "High Low" built-in tile behind the modal.
-      await tester.tap(find.descendant(
-        of: find.byType(BottomSheet),
-        matching: find.text('High Low'),
-      ));
+      await tester.tap(find.descendant(of: find.byType(BottomSheet), matching: find.text('High Low')));
       await tester.pumpAndSettle();
 
       // Editor opens with the preset name pre-filled
@@ -541,7 +527,7 @@ void main() {
 
     testWidgets('delete profile shows confirmation dialog', (tester) async {
       await store.upsert(_simpleProfile());
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       // Scroll until the more_vert popup menu in the Test card is fully on screen.
@@ -562,7 +548,7 @@ void main() {
 
     testWidgets('cancel delete keeps profile', (tester) async {
       await store.upsert(_simpleProfile());
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(find.text('Test'), 50.0);
@@ -583,7 +569,7 @@ void main() {
 
     testWidgets('confirm delete removes profile', (tester) async {
       await store.upsert(_simpleProfile());
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(find.text('Test'), 50.0);
@@ -606,7 +592,7 @@ void main() {
 
     testWidgets('duplicate opens editor on a "(copy)" clone and saves it alongside the original', (tester) async {
       await store.upsert(_simpleProfile(name: 'Test'));
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(find.text('Test'), 50.0);
@@ -633,7 +619,7 @@ void main() {
     });
 
     testWidgets('tapping built-in profile expands to show animation rows', (tester) async {
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       // Tap the first built-in profile's ExpansionTile header to expand it.
@@ -647,7 +633,7 @@ void main() {
 
     testWidgets('tapping user profile expands to show animation rows', (tester) async {
       await store.upsert(_simpleProfile());
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(find.text('Test'), 50.0);
@@ -663,7 +649,7 @@ void main() {
     });
 
     testWidgets('collapsing Built-in Profiles section hides profile list', (tester) async {
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       // Built-in profiles are visible initially.
@@ -679,7 +665,7 @@ void main() {
 
     testWidgets('collapsing My Profiles section hides profile list', (tester) async {
       await store.upsert(_simpleProfile());
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       // Scroll to My Profiles section header and collapse it.
@@ -695,7 +681,7 @@ void main() {
 
     testWidgets('status banner appears above scroll view, not as a sliver', (tester) async {
       await store.upsert(_simpleProfile());
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(buildScreen());
       await tester.pumpAndSettle();
 
       // Scroll past the built-ins to the user profile.
@@ -706,10 +692,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Record scroll position before flashing.
-      final scrollBefore = tester
-          .firstWidget<CustomScrollView>(find.byType(CustomScrollView))
-          .controller
-          ?.offset;
+      final scrollBefore = tester.firstWidget<CustomScrollView>(find.byType(CustomScrollView)).controller?.offset;
 
       await tester.tap(uploadBtn);
       await tester.pumpAndSettle();
@@ -718,10 +701,7 @@ void main() {
       expect(find.textContaining('flashed to die'), findsOneWidget);
 
       // Scroll position must be unchanged (status is outside the scroll view).
-      final scrollAfter = tester
-          .firstWidget<CustomScrollView>(find.byType(CustomScrollView))
-          .controller
-          ?.offset;
+      final scrollAfter = tester.firstWidget<CustomScrollView>(find.byType(CustomScrollView)).controller?.offset;
       expect(scrollAfter, equals(scrollBefore));
     });
   });

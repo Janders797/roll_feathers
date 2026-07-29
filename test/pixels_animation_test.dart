@@ -12,7 +12,7 @@ void main() {
       c.writeTo(buf, 0);
       expect(buf.getUint8(0), 255); // r
       expect(buf.getUint8(1), 128); // g
-      expect(buf.getUint8(2), 64);  // b
+      expect(buf.getUint8(2), 64); // b
     });
 
     test('equality and identity in list', () {
@@ -116,12 +116,7 @@ void main() {
     });
 
     test('JSON round-trip', () {
-      final anim = PixelAnimationSimple(
-        durationMs: 300,
-        color: const PixelColor(0, 128, 255),
-        count: 3,
-        fade: 0,
-      );
+      final anim = PixelAnimationSimple(durationMs: 300, color: const PixelColor(0, 128, 255), count: 3, fade: 0);
       final json = anim.toJson();
       final restored = PixelAnimationSimple.fromJson(json);
       expect(restored.durationMs, 300);
@@ -220,8 +215,7 @@ void main() {
     });
 
     test('JSON round-trip', () {
-      final restored = PixelConditionIdle.fromJson(
-        PixelConditionIdle(repeatPeriodMs: 1234).toJson());
+      final restored = PixelConditionIdle.fromJson(PixelConditionIdle(repeatPeriodMs: 1234).toJson());
       expect(restored.repeatPeriodMs, 1234);
     });
   });
@@ -241,7 +235,8 @@ void main() {
 
     test('JSON round-trip', () {
       final restored = PixelAnimationBlinkId.fromJson(
-        PixelAnimationBlinkId(durationMs: 800, framesPerBlink: 4, brightness: 128).toJson());
+        PixelAnimationBlinkId(durationMs: 800, framesPerBlink: 4, brightness: 128).toJson(),
+      );
       expect(restored.durationMs, 800);
       expect(restored.framesPerBlink, 4);
       expect(restored.brightness, 128);
@@ -268,34 +263,24 @@ void main() {
   });
 
   group('PixelDataSet serialization', () {
-    PixelProfile _simpleProfile() => PixelProfile(
+    PixelProfile simpleProfile() => PixelProfile(
       id: 'test',
       name: 'Test',
       brightness: 200,
-      animations: [
-        PixelAnimationSimple(
-          durationMs: 500,
-          color: const PixelColor(255, 0, 0),
-          count: 1,
-          fade: 0,
-        ),
-      ],
+      animations: [PixelAnimationSimple(durationMs: 500, color: const PixelColor(255, 0, 0), count: 1, fade: 0)],
       rules: [
-        PixelRule(
-          condition: PixelConditionRolled(),
-          actions: [PixelActionPlayAnimation(animIndex: 0)],
-        ),
+        PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)]),
       ],
     );
 
     test('toByteArray produces non-empty buffer', () {
-      final ds = PixelDataSet(_simpleProfile());
+      final ds = PixelDataSet(simpleProfile());
       final bytes = ds.toByteArray();
       expect(bytes.length, greaterThan(0));
     });
 
     test('toAnimationsByteArray is smaller than full dataset', () {
-      final profile = _simpleProfile();
+      final profile = simpleProfile();
       final ds = PixelDataSet(profile);
       final full = ds.toByteArray();
       final anims = ds.toAnimationsByteArray();
@@ -303,7 +288,7 @@ void main() {
     });
 
     test('computeStats reflects animation and condition counts', () {
-      final ds = PixelDataSet(_simpleProfile());
+      final ds = PixelDataSet(simpleProfile());
       final stats = ds.computeStats();
       expect(stats.animationCount, 1);
       expect(stats.ruleCount, 1);
@@ -313,15 +298,15 @@ void main() {
     });
 
     test('computeInstantStats includes non-zero hash', () {
-      final ds = PixelDataSet(_simpleProfile());
+      final ds = PixelDataSet(simpleProfile());
       final stats = ds.computeInstantStats();
       expect(stats.animationCount, 1);
       expect(stats.hash, isNonZero);
     });
 
     test('two identical profiles produce the same hash', () {
-      final p1 = _simpleProfile();
-      final p2 = _simpleProfile();
+      final p1 = simpleProfile();
+      final p2 = simpleProfile();
       final h1 = PixelDataSet(p1).computeInstantStats().hash;
       final h2 = PixelDataSet(p2).computeInstantStats().hash;
       expect(h1, h2);
@@ -333,10 +318,7 @@ void main() {
         name: 'Rainbow',
         animations: [PixelAnimationRainbow()],
         rules: [
-          PixelRule(
-            condition: PixelConditionRolling(),
-            actions: [PixelActionPlayAnimation(animIndex: 0)],
-          ),
+          PixelRule(condition: PixelConditionRolling(), actions: [PixelActionPlayAnimation(animIndex: 0)]),
         ],
       );
       final ds = PixelDataSet(profile);
@@ -426,8 +408,12 @@ void main() {
 
     test('serializes without error', () {
       final profile = PixelProfile(
-        id: 'g', name: 'Gradient', animations: [PixelAnimationGradient()],
-        rules: [PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)])],
+        id: 'g',
+        name: 'Gradient',
+        animations: [PixelAnimationGradient()],
+        rules: [
+          PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)]),
+        ],
       );
       expect(() => PixelDataSet(profile).toByteArray(), returnsNormally);
     });
@@ -586,7 +572,7 @@ void main() {
     });
 
     test('entry count clamped to 4', () {
-      final anim = PixelAnimationSequence(entries: [(0,0),(12,0),(24,0),(36,0),(48,0)]);
+      final anim = PixelAnimationSequence(entries: [(0, 0), (12, 0), (24, 0), (36, 0), (48, 0)]);
       final bits = AnimationBits();
       final buf = ByteData(22);
       anim.writeTo(buf, 0, bits);
@@ -605,7 +591,8 @@ void main() {
     test('bits size padding does not cause buffer overflow', () {
       // Profile whose finalBitsSize is not 4-aligned — previously caused buffer overflow.
       final profile = PixelProfile(
-        id: 'test', name: 'Multi',
+        id: 'test',
+        name: 'Multi',
         animations: [
           PixelAnimationNoise(), // adds 2 rgb tracks
           PixelAnimationNoise(), // adds 2 more

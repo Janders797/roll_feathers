@@ -14,3 +14,4 @@ use selection @HIGHEST
 use selection @LOWEST
   aggregate over selection min
   on result [*:*] action blink red
+  report max over @HIGHEST

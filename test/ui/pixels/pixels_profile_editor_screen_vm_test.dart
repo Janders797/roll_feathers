@@ -29,11 +29,11 @@ void main() {
   PixelsProfileEditorViewModel vmFor(PixelProfile p, {PixelDieService? die}) =>
       PixelsProfileEditorViewModel(domain, die, p);
 
-  PixelProfile _profile(List<PixelAnimation> anims, List<PixelRule> rules) =>
+  PixelProfile profile(List<PixelAnimation> anims, List<PixelRule> rules) =>
       PixelProfile(id: 'e1', name: 'Edit', animations: anims, rules: rules);
 
   test('add / replace animation', () {
-    final vm = vmFor(_profile([_simple(1)], const []));
+    final vm = vmFor(profile([_simple(1)], const []));
     vm.addAnimation(_simple(2));
     expect(vm.animations, hasLength(2));
     vm.replaceAnimation(0, _simple(9));
@@ -42,9 +42,11 @@ void main() {
 
   test('deleteAnimation clamps rule indices that fall out of range', () {
     final vm = vmFor(
-      _profile(
+      profile(
         [_simple(1), _simple(2)],
-        [PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 1)])],
+        [
+          PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 1)]),
+        ],
       ),
     );
     vm.deleteAnimation(0); // now only 1 animation; the rule referenced index 1
@@ -53,7 +55,7 @@ void main() {
   });
 
   test('importAnimation appends resolved clones and returns the count', () {
-    final vm = vmFor(_profile([_simple(1)], const []));
+    final vm = vmFor(profile([_simple(1)], const []));
     final source = [
       _simple(5),
       PixelAnimationSequence(durationMs: 300, entries: [(0, 0)]),
@@ -66,7 +68,7 @@ void main() {
   });
 
   test('rule mutations', () {
-    final vm = vmFor(_profile([_simple(1)], const []));
+    final vm = vmFor(profile([_simple(1)], const []));
     vm.addRule(PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)]));
     expect(vm.rules, hasLength(1));
     vm.deleteRule(0);
@@ -74,7 +76,7 @@ void main() {
   });
 
   test('buildProfile uses the given name and current lists; preview hidden without a die', () {
-    final vm = vmFor(_profile([_simple(1)], const []));
+    final vm = vmFor(profile([_simple(1)], const []));
     expect(vm.canPreview, isFalse);
     final built = vm.buildProfile('  My Name  ');
     expect(built.name, 'My Name');
@@ -85,7 +87,7 @@ void main() {
   test('preview against a die reports status', () async {
     final sim = PixelsDieSimulator(name: 'Sim');
     addTearDown(sim.dispose);
-    final vm = vmFor(_profile([_simple(1)], const []), die: PixelDieService(sim));
+    final vm = vmFor(profile([_simple(1)], const []), die: PixelDieService(sim));
     expect(vm.canPreview, isTrue);
     await vm.preview.execute(vm.animations, 0);
     expect(vm.statusMessage, 'Preview sent');

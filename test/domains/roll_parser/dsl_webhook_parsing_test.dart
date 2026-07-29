@@ -68,6 +68,7 @@ define hook_test for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] webhook POST https://example.com/roll
+  report sum over \$ALL_DICE
 ''';
       final result = RuleParser.v11ScriptParser.parse(script);
       if (!result.isSuccess) fail('Failed to parse script: ${(result as pp.Failure).message}');
@@ -84,6 +85,7 @@ define hook_get for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [5:15] webhook GET https://example.com/hook
+  report sum over \$ALL_DICE
 ''';
       final result = RuleParser.v11ScriptParser.parse(script);
       if (!result.isSuccess) fail('Failed to parse script: ${(result as pp.Failure).message}');
@@ -107,6 +109,7 @@ define coexist for roll *d*
     aggregate over selection sum
     on result [*:*] action blink blue
     on result [*:*] webhook POST https://example.com/roll
+  report sum over \$ALL_DICE
 ''';
       final result = RuleParser.v11ScriptParser.parse(script);
       if (!result.isSuccess) fail('Failed to parse script: ${(result as pp.Failure).message}');

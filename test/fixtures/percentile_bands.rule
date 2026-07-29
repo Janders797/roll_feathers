@@ -21,3 +21,4 @@ use selection @BAND2
 use selection @BAND3
   aggregate over selection max
   on result [*:*] action blink yellow
+  report max over @BAND1

@@ -13,3 +13,4 @@ make selection @TOP from @MID
 use selection @TOP
   aggregate over selection sum
   on result [*:*] action blink purple
+  report sum over @TOP

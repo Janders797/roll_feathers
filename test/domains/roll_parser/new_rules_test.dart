@@ -13,6 +13,7 @@ define doubles for roll *d*
   use selection @DUPE2
     aggregate over selection count
     on result [1:*] action blink blue
+  report count over @DUPE2
 ''';
 
 const String ruleTriplesExactly = '''
@@ -24,6 +25,7 @@ define nDupes for roll *d*
   use selection @NDUPE
     aggregate over selection count
     on result [1:*] action blink blue
+  report count over @NDUPE
 ''';
 
 const String rulePairsExactly = '''
@@ -35,6 +37,7 @@ define nDupes for roll *d*
   use selection @NDUPE
     aggregate over selection count
     on result [1:*] action blink blue
+  report count over @NDUPE
 ''';
 
 const String ruleHighLowAllTiesExclusive = '''
@@ -60,6 +63,7 @@ define highLowAllTiesExclusive for roll *d*
   use selection @ALL_MIN
     aggregate over selection count
     on result [1:\$ROLLED) action blink red
+  report count over @DUPE_ANY
 ''';
 
 const String ruleHighLowTiesSingle = '''
@@ -79,6 +83,7 @@ define highLowTiesSingle for roll *d*
   use selection @LOW
     aggregate over selection min
     on result [*:\$MAX) action blink red
+  report max over @HIGH
 ''';
 
 const String ruleHighLowSinglePreferMax = '''
@@ -98,6 +103,7 @@ define highLowSinglePreferMax for roll *d*
   use selection @LOW
     aggregate over selection min
     on result [*:\$MAX) action blink red
+  report max over @HIGH
 ''';
 
 void main() {
@@ -108,11 +114,7 @@ void main() {
       final runner = await DslTestRunner.create();
       final res = await runner.run(
         rule: ruleDoublesExactPairs,
-        dice: [
-          DieInput('d6', 3, id: 'A'),
-          DieInput('d6', 3, id: 'B'),
-          DieInput('d6', 4, id: 'C'),
-        ],
+        dice: [DieInput('d6', 3, id: 'A'), DieInput('d6', 3, id: 'B'), DieInput('d6', 4, id: 'C')],
       );
 
       final blues = res.actions.where((a) => a.colorValue == colorMap['blue']!.value).toList();
@@ -123,11 +125,7 @@ void main() {
       final runner = await DslTestRunner.create();
       final res = await runner.run(
         rule: ruleDoublesExactPairs,
-        dice: [
-          DieInput('d6', 2, id: 'A'),
-          DieInput('d6', 2, id: 'B'),
-          DieInput('d6', 2, id: 'C'),
-        ],
+        dice: [DieInput('d6', 2, id: 'A'), DieInput('d6', 2, id: 'B'), DieInput('d6', 2, id: 'C')],
       );
       final blues = res.actions.where((a) => a.colorValue == colorMap['blue']!.value).toList();
       expect(blues.length, 0);
@@ -154,11 +152,7 @@ void main() {
       final runner = await DslTestRunner.create();
       final res = await runner.run(
         rule: rulePairsExactly,
-        dice: [
-          DieInput('d6', 4, id: 'A'),
-          DieInput('d6', 4, id: 'B'),
-          DieInput('d6', 4, id: 'C'),
-        ],
+        dice: [DieInput('d6', 4, id: 'A'), DieInput('d6', 4, id: 'B'), DieInput('d6', 4, id: 'C')],
       );
       final blues = res.actions.where((a) => a.colorValue == colorMap['blue']!.value).toList();
       expect(blues.length, 0);
@@ -184,11 +178,7 @@ void main() {
       // Mixed: 6,1,6
       final mixed = await runner.run(
         rule: ruleHighLowAllTiesExclusive,
-        dice: [
-          DieInput('d6', 6, id: 'X'),
-          DieInput('d6', 1, id: 'Y'),
-          DieInput('d6', 6, id: 'Z'),
-        ],
+        dice: [DieInput('d6', 6, id: 'X'), DieInput('d6', 1, id: 'Y'), DieInput('d6', 6, id: 'Z')],
       );
       final mPurples = mixed.actions.where((a) => a.colorValue == colorMap['purple']!.value).length;
       final mGreens = mixed.actions.where((a) => a.colorValue == colorMap['green']!.value).length;

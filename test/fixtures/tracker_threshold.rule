@@ -6,3 +6,4 @@ make selection @ALL from $ALL_DICE
 use selection @ALL
   aggregate over selection sum
   on result [50:*] action sequence red blue green
+  report sum over @ALL

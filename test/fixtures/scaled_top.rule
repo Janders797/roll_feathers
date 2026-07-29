@@ -8,3 +8,4 @@ make selection @SCALED_TOP
 use selection @SCALED_TOP
   aggregate over selection max
   on result [*:*] action blink purple
+  report max over @SCALED_TOP

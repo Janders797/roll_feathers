@@ -22,6 +22,7 @@ define highLowSinglePreferMax for roll *d*
   use selection @LOW
     aggregate over selection min
     on result [*:\$MAX) action blink red
+  report max over @HIGH
 ''';
 
 void main() {
@@ -31,11 +32,7 @@ void main() {
     final runner = await DslTestRunner.create();
     final res = await runner.run(
       rule: ruleHighLowSinglePreferMax,
-      dice: [
-        DieInput('d6', 3, id: 'A'),
-        DieInput('d6', 3, id: 'B'),
-        DieInput('d6', 3, id: 'C'),
-      ],
+      dice: [DieInput('d6', 3, id: 'A'), DieInput('d6', 3, id: 'B'), DieInput('d6', 3, id: 'C')],
     );
 
     final greens = res.actions.where((a) => a.colorValue == colorMap['green']!.value).toList();
@@ -49,11 +46,7 @@ void main() {
     final runner = await DslTestRunner.create();
     final res = await runner.run(
       rule: ruleHighLowSinglePreferMax,
-      dice: [
-        DieInput('d6', 6, id: 'H'),
-        DieInput('d6', 1, id: 'L'),
-        DieInput('d6', 4, id: 'M'),
-      ],
+      dice: [DieInput('d6', 6, id: 'H'), DieInput('d6', 1, id: 'L'), DieInput('d6', 4, id: 'M')],
     );
 
     final greens = res.actions.where((a) => a.colorValue == colorMap['green']!.value).toList();

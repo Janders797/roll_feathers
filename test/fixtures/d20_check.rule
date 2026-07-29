@@ -14,3 +14,4 @@ use selection @SUCCESS
 use selection @FAIL
   aggregate over selection sum
   on result [*:*] action blink orange
+  report sum over @SUCCESS

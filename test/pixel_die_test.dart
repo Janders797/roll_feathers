@@ -37,17 +37,18 @@ void main() {
     when(() => mockDevice.deviceId).thenReturn('test-device-id');
     when(() => mockDevice.friendlyName).thenReturn('Test Device');
     when(() => mockDevice.servicesUuids).thenReturn([pix.pixelsService]);
-    when(() => mockDevice.characteristicUuids).thenReturn([
-      pix.pixelWriteCharacteristic,
-      pix.pixelNotifyCharacteristic
-    ]);
+    when(
+      () => mockDevice.characteristicUuids,
+    ).thenReturn([pix.pixelWriteCharacteristic, pix.pixelNotifyCharacteristic]);
     when(() => mockDevice.init()).thenAnswer((_) async => true);
     when(() => mockDevice.notifyStream).thenAnswer((_) => notifyStreamController.stream);
-    when(() => mockDevice.setDeviceUuids(
-      serviceUuid: any(named: 'serviceUuid'),
-      notifyUuid: any(named: 'notifyUuid'),
-      writeUuid: any(named: 'writeUuid')
-    )).thenAnswer((_) async {});
+    when(
+      () => mockDevice.setDeviceUuids(
+        serviceUuid: any(named: 'serviceUuid'),
+        notifyUuid: any(named: 'notifyUuid'),
+        writeUuid: any(named: 'writeUuid'),
+      ),
+    ).thenAnswer((_) async {});
     when(() => mockDevice.writeMessage(any())).thenAnswer((invocation) async {
       final data = invocation.positionalArguments[0] as List<int>;
       if (data.isNotEmpty && data[0] == pix.PixelMessageType.whoAreYou.index) {
@@ -73,11 +74,13 @@ void main() {
   test('PixelDie initialization sets up device and sends initial message', () async {
     final PixelDie die = await PixelDie.create(device: mockDevice);
 
-    verify(() => mockDevice.setDeviceUuids(
-      serviceUuid: pix.pixelsService,
-      notifyUuid: pix.pixelNotifyCharacteristic,
-      writeUuid: pix.pixelWriteCharacteristic
-    )).called(1);
+    verify(
+      () => mockDevice.setDeviceUuids(
+        serviceUuid: pix.pixelsService,
+        notifyUuid: pix.pixelNotifyCharacteristic,
+        writeUuid: pix.pixelWriteCharacteristic,
+      ),
+    ).called(1);
 
     // Verify that the WhoAreYou message was sent
     verify(() => mockDevice.writeMessage(any())).called(1);
@@ -224,8 +227,10 @@ void main() {
   test('dType setter throws UnsupportedError', () async {
     final PixelDie die = await PixelDie.create(device: mockDevice);
 
-    expect(() => die.dType = GenericDTypeFactory.getKnownChecked(GenericDTypeFactory.d6),
-        throwsA(isA<UnsupportedError>()));
+    expect(
+      () => die.dType = GenericDTypeFactory.getKnownChecked(GenericDTypeFactory.d6),
+      throwsA(isA<UnsupportedError>()),
+    );
   });
 
   // Test blinkColor getter and setter
@@ -298,7 +303,7 @@ void main() {
 
   // Per-die-type rolled face value conversion (facematch). The value is derived
   // from the face *index* via the die type, not a naïve index+1.
-  List<int> _iAmADie(pix.PixelDieType dieType, int faceIndex) => [
+  List<int> iAmADie(pix.PixelDieType dieType, int faceIndex) => [
     pix.PixelMessageType.iAmADie.index,
     20, 0, dieType.index,
     0, 0, 0, 0, // dataSetHash
@@ -307,13 +312,12 @@ void main() {
     0, 0, 0, 0, // buildTimestamp
     DiceRollState.rolled.index, faceIndex, 100, 0,
   ];
-  List<int> _rollState(int faceIndex) =>
-      [pix.PixelMessageType.rollState.index, DiceRollState.rolled.index, faceIndex];
+  List<int> rollState(int faceIndex) => [pix.PixelMessageType.rollState.index, DiceRollState.rolled.index, faceIndex];
 
   test('d10 reports face value == index (0-9)', () async {
     final die = await PixelDie.create(device: mockDevice);
-    notifyStreamController.add(_iAmADie(pix.PixelDieType.d10, 0)); // learn die type
-    notifyStreamController.add(_rollState(5));
+    notifyStreamController.add(iAmADie(pix.PixelDieType.d10, 0)); // learn die type
+    notifyStreamController.add(rollState(5));
     await Future.delayed(Duration(milliseconds: 10));
     expect(die.state.currentFaceIndex, equals(5));
     expect(die.state.currentFaceValue, equals(5)); // not 6
@@ -321,16 +325,16 @@ void main() {
 
   test('d00 reports face value == index*10 (0/10/.../90)', () async {
     final die = await PixelDie.create(device: mockDevice);
-    notifyStreamController.add(_iAmADie(pix.PixelDieType.d00, 0));
-    notifyStreamController.add(_rollState(5));
+    notifyStreamController.add(iAmADie(pix.PixelDieType.d00, 0));
+    notifyStreamController.add(rollState(5));
     await Future.delayed(Duration(milliseconds: 10));
     expect(die.state.currentFaceValue, equals(50));
   });
 
   test('d6 still reports index+1', () async {
     final die = await PixelDie.create(device: mockDevice);
-    notifyStreamController.add(_iAmADie(pix.PixelDieType.d6, 0));
-    notifyStreamController.add(_rollState(3));
+    notifyStreamController.add(iAmADie(pix.PixelDieType.d6, 0));
+    notifyStreamController.add(rollState(3));
     await Future.delayed(Duration(milliseconds: 10));
     expect(die.state.currentFaceValue, equals(4));
   });

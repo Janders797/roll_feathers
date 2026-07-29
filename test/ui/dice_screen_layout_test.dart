@@ -2,7 +2,6 @@ import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:roll_feathers/dice_sdks/dice_sdks.dart';
 import 'package:roll_feathers/domains/roll_domain.dart';
 import 'package:roll_feathers/services/app_service.dart';
 import 'package:roll_feathers/services/dddice/dddice_config_service.dart';
@@ -13,6 +12,7 @@ import 'package:roll_feathers/services/home_assistant/ha_config_service.dart';
 import 'package:roll_feathers/util/command.dart';
 
 class MockDiceScreenViewModel extends Mock implements DiceScreenViewModel {}
+
 class MockAppSettingsScreenViewModel extends Mock implements AppSettingsScreenViewModel {}
 
 void main() {
@@ -27,7 +27,7 @@ void main() {
     when(() => mockDiceVm.getResultsStream()).thenAnswer((_) => Stream.value([]));
     when(() => mockDiceVm.dice).thenReturn({});
     when(() => mockDiceVm.rollHistory).thenReturn([]);
-    
+
     when(() => mockSettingsVm.bleIsEnabled()).thenReturn(true);
     when(() => mockSettingsVm.isWeb).thenReturn(false);
     when(() => mockSettingsVm.isScanning).thenReturn(false);
@@ -40,7 +40,7 @@ void main() {
     when(() => mockSettingsVm.getKeepScreenOn()).thenReturn(false);
     when(() => mockSettingsVm.addListener(any())).thenReturn(null);
     when(() => mockSettingsVm.removeListener(any())).thenReturn(null);
-    
+
     // Commands in DiceScreenViewModel (needed for the build method)
     // rollAllVirtualDice is used in TextButton.icon
     // disconnectAllDice is used in ListTile (Drawer)
@@ -48,13 +48,7 @@ void main() {
   });
 
   Widget pumpTestWidget() {
-    return MaterialApp(
-      home: DiceScreenWidget(
-        viewModel: mockDiceVm,
-        settingsVm: mockSettingsVm,
-        appVersion: '0.0.0',
-      ),
-    );
+    return MaterialApp(home: DiceScreenWidget(viewModel: mockDiceVm, settingsVm: mockSettingsVm, appVersion: '0.0.0'));
   }
 
   testWidgets('should not overflow on narrow screen widths', (tester) async {
@@ -68,7 +62,7 @@ void main() {
     });
 
     await tester.pumpWidget(pumpTestWidget());
-    
+
     expect(tester.takeException(), isNull);
   });
 
@@ -81,7 +75,7 @@ void main() {
     });
 
     await tester.pumpWidget(pumpTestWidget());
-    
+
     expect(tester.takeException(), isNull);
   });
 
@@ -95,7 +89,7 @@ void main() {
     });
 
     await tester.pumpWidget(pumpTestWidget());
-    
+
     expect(tester.takeException(), isNull);
   });
   testWidgets('should not overflow on extremely small screens (200x200)', (tester) async {
@@ -107,7 +101,7 @@ void main() {
     });
 
     await tester.pumpWidget(pumpTestWidget());
-    
+
     expect(tester.takeException(), isNull);
   });
 
@@ -227,7 +221,10 @@ void main() {
     testWidgets('Remove Virtual Dice cancel dismisses without executing', (tester) async {
       bool executed = false;
       when(() => mockDiceVm.removeAllVirtualDice).thenReturn(
-        Command0(() async { executed = true; return Result.value(null); }),
+        Command0(() async {
+          executed = true;
+          return Result.value(null);
+        }),
       );
 
       await tester.pumpWidget(pumpTestWidget());
@@ -243,7 +240,10 @@ void main() {
     testWidgets('Remove Virtual Dice confirm executes the command', (tester) async {
       bool executed = false;
       when(() => mockDiceVm.removeAllVirtualDice).thenReturn(
-        Command0(() async { executed = true; return Result.value(null); }),
+        Command0(() async {
+          executed = true;
+          return Result.value(null);
+        }),
       );
 
       await tester.pumpWidget(pumpTestWidget());
@@ -271,7 +271,10 @@ void main() {
     testWidgets('Remove All Dice confirm executes the command', (tester) async {
       bool executed = false;
       when(() => mockDiceVm.disconnectAllDice).thenReturn(
-        Command0(() async { executed = true; return Result.value(null); }),
+        Command0(() async {
+          executed = true;
+          return Result.value(null);
+        }),
       );
 
       await tester.pumpWidget(pumpTestWidget());
@@ -309,12 +312,7 @@ void main() {
   });
 
   testWidgets('roll history falls back to ruleName when no displayName', (tester) async {
-    final roll = RollResult(
-      rollType: RollType.rule,
-      rollResult: 15,
-      rolls: {'die-1': 15},
-      ruleName: 'standardRoll',
-    );
+    final roll = RollResult(rollType: RollType.rule, rollResult: 15, rolls: {'die-1': 15}, ruleName: 'standardRoll');
     when(() => mockDiceVm.rollHistory).thenReturn([roll]);
     when(() => mockDiceVm.getResultsStream()).thenAnswer((_) => Stream.value([roll]));
     when(() => mockDiceVm.getDieById(any())).thenReturn(null);

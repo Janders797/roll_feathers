@@ -20,12 +20,7 @@ class _LocalServer {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     _sub = _server.listen((req) async {
       final body = await utf8.decodeStream(req);
-      received.add(_Captured(
-        method: req.method,
-        uri: req.uri,
-        body: body,
-        statusCode: req.response.statusCode,
-      ));
+      received.add(_Captured(method: req.method, uri: req.uri, body: body, statusCode: req.response.statusCode));
       req.response.statusCode = 200;
       await req.response.close();
     });
@@ -55,6 +50,7 @@ define intTest for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] webhook $method $url
+  report sum over \$ALL_DICE
 ''';
 
 void main() {
@@ -83,20 +79,14 @@ void main() {
 
     test('4.1 POST reaches real server', () async {
       final parser = await makeParser(WebhookDomain(appService: app));
-      await parser.evaluateRule(
-        _integrationScript(url: '${server.url}/roll'),
-        [FakeDie('a', 'A', 5)],
-      ).runEffects();
+      await parser.evaluateRule(_integrationScript(url: '${server.url}/roll'), [FakeDie('a', 'A', 5)]).runEffects();
       expect(server.received.length, equals(1));
       expect(server.received.first.method, equals('POST'));
     });
 
     test('4.2 POST body is valid JSON with rule and aggregate', () async {
       final parser = await makeParser(WebhookDomain(appService: app));
-      await parser.evaluateRule(
-        _integrationScript(url: '${server.url}/roll'),
-        [FakeDie('a', 'A', 6)],
-      ).runEffects();
+      await parser.evaluateRule(_integrationScript(url: '${server.url}/roll'), [FakeDie('a', 'A', 6)]).runEffects();
       final body = jsonDecode(server.received.first.body) as Map<String, dynamic>;
       expect(body.containsKey('rule'), isTrue);
       expect(body.containsKey('aggregate'), isTrue);
@@ -104,10 +94,9 @@ void main() {
 
     test('4.3 GET reaches real server with correct query params', () async {
       final parser = await makeParser(WebhookDomain(appService: app));
-      await parser.evaluateRule(
-        _integrationScript(method: 'GET', url: '${server.url}/hook'),
-        [FakeDie('a', 'A', 8)],
-      ).runEffects();
+      await parser.evaluateRule(_integrationScript(method: 'GET', url: '${server.url}/hook'), [
+        FakeDie('a', 'A', 8),
+      ]).runEffects();
       expect(server.received.length, equals(1));
       expect(server.received.first.method, equals('GET'));
       expect(server.received.first.uri.queryParameters['aggregate'], equals('8'));
@@ -126,10 +115,9 @@ void main() {
       final parser = await makeParser(WebhookDomain(appService: app));
       // Should complete without throwing.
       await expectLater(
-        parser.evaluateRule(
-          _integrationScript(url: 'http://127.0.0.1:${server500.port}/roll'),
-          [FakeDie('a', 'A', 3)],
-        ).runEffects(),
+        parser.evaluateRule(_integrationScript(url: 'http://127.0.0.1:${server500.port}/roll'), [
+          FakeDie('a', 'A', 3),
+        ]).runEffects(),
         completes,
       );
     });
@@ -138,10 +126,9 @@ void main() {
       // Use a port with no server listening.
       final parser = await makeParser(WebhookDomain(appService: app));
       await expectLater(
-        parser.evaluateRule(
-          _integrationScript(url: 'http://127.0.0.1:19999/roll'),
-          [FakeDie('a', 'A', 3)],
-        ).runEffects(),
+        parser.evaluateRule(_integrationScript(url: 'http://127.0.0.1:19999/roll'), [
+          FakeDie('a', 'A', 3),
+        ]).runEffects(),
         completes,
       );
     });

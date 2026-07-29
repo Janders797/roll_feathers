@@ -5,24 +5,16 @@ import 'package:roll_feathers/dice_sdks/pixels/pixels_animation.dart';
 import 'package:roll_feathers/services/pixels/pixel_die_service.dart';
 import 'package:roll_feathers/testing/pixels_die_simulator.dart';
 
-PixelProfile _testProfile({
-  String id = 'test',
-  int durationMs = 500,
-  PixelColor color = const PixelColor(255, 0, 0),
-}) => PixelProfile(
-  id: id,
-  name: 'Test Profile',
-  brightness: 200,
-  animations: [
-    PixelAnimationSimple(durationMs: durationMs, color: color, count: 1, fade: 0),
-  ],
-  rules: [
-    PixelRule(
-      condition: PixelConditionRolled(),
-      actions: [PixelActionPlayAnimation(animIndex: 0)],
-    ),
-  ],
-);
+PixelProfile _testProfile({String id = 'test', int durationMs = 500, PixelColor color = const PixelColor(255, 0, 0)}) =>
+    PixelProfile(
+      id: id,
+      name: 'Test Profile',
+      brightness: 200,
+      animations: [PixelAnimationSimple(durationMs: durationMs, color: color, count: 1, fade: 0)],
+      rules: [
+        PixelRule(condition: PixelConditionRolled(), actions: [PixelActionPlayAnimation(animIndex: 0)]),
+      ],
+    );
 
 // Minimal blink message for testing the simulator's blink handling.
 class _BlinkMsg extends TxMessage {
@@ -42,7 +34,9 @@ class _SetNameMsg extends TxMessage {
     final encoded = name.codeUnits.take(31).toList();
     final buf = List<int>.filled(33, 0);
     buf[0] = 51;
-    for (var i = 0; i < encoded.length; i++) buf[1 + i] = encoded[i];
+    for (var i = 0; i < encoded.length; i++) {
+      buf[1 + i] = encoded[i];
+    }
     return buf;
   }
 }
@@ -134,10 +128,7 @@ void main() {
     });
 
     test('playInstantAnimation sends without error', () async {
-      await expectLater(
-        transfer.playInstantAnimation(animIndex: 0, faceIndex: 5, loopCount: 2),
-        completes,
-      );
+      await expectLater(transfer.playInstantAnimation(animIndex: 0, faceIndex: 5, loopCount: 2), completes);
     });
 
     test('whoAreYou after transferProfile returns updated hash', () async {
@@ -175,10 +166,7 @@ void main() {
         name: 'Hello',
         animations: [PixelAnimationSimple(durationMs: 1000)],
         rules: [
-          PixelRule(
-            condition: PixelConditionHelloGoodbye(flags: 1),
-            actions: [PixelActionPlayAnimation(animIndex: 0)],
-          ),
+          PixelRule(condition: PixelConditionHelloGoodbye(flags: 1), actions: [PixelActionPlayAnimation(animIndex: 0)]),
         ],
       );
       await expectLater(transfer.transferProfile(profile), completes);
@@ -188,14 +176,17 @@ void main() {
       final profile = PixelProfile(
         id: 'large',
         name: 'Large',
-        animations: List.generate(5, (i) => PixelAnimationSimple(
-          durationMs: 200 + i * 100,
-          color: PixelColor(i * 50, 255 - i * 40, i * 30),
-        )),
-        rules: List.generate(5, (i) => PixelRule(
-          condition: PixelConditionRolled(faceMask: 1 << i),
-          actions: [PixelActionPlayAnimation(animIndex: i)],
-        )),
+        animations: List.generate(
+          5,
+          (i) => PixelAnimationSimple(durationMs: 200 + i * 100, color: PixelColor(i * 50, 255 - i * 40, i * 30)),
+        ),
+        rules: List.generate(
+          5,
+          (i) => PixelRule(
+            condition: PixelConditionRolled(faceMask: 1 << i),
+            actions: [PixelActionPlayAnimation(animIndex: i)],
+          ),
+        ),
       );
       await expectLater(transfer.transferProfile(profile), completes);
     });
@@ -205,14 +196,17 @@ void main() {
       final profile = PixelProfile(
         id: 'bigchunk',
         name: 'BigChunk',
-        animations: List.generate(10, (i) => PixelAnimationSimple(
-          durationMs: 100 + i,
-          color: PixelColor(i * 25, 0, 0),
-        )),
-        rules: List.generate(10, (i) => PixelRule(
-          condition: PixelConditionRolled(faceMask: 1 << (i % 20)),
-          actions: [PixelActionPlayAnimation(animIndex: i)],
-        )),
+        animations: List.generate(
+          10,
+          (i) => PixelAnimationSimple(durationMs: 100 + i, color: PixelColor(i * 25, 0, 0)),
+        ),
+        rules: List.generate(
+          10,
+          (i) => PixelRule(
+            condition: PixelConditionRolled(faceMask: 1 << (i % 20)),
+            actions: [PixelActionPlayAnimation(animIndex: i)],
+          ),
+        ),
       );
       final bytes = PixelDataSet(profile).toByteArray();
       expect(bytes.length, greaterThan(100)); // ensure multi-chunk

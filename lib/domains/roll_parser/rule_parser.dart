@@ -14,7 +14,9 @@ const String rolledAliasKey = "\$ROLLED";
 const String maxValueKey = "\$MAX";
 const String minValueKey = "\$MIN";
 
-final pp.Parser<String> dieParser = (numberOrStarParser & 'd'.toParser() & numberOrStarParser).flatten().map((s) => s.trim());
+final pp.Parser<String> dieParser = (numberOrStarParser & 'd'.toParser() & numberOrStarParser).flatten().map(
+  (s) => s.trim(),
+);
 
 class MakeSelectionDef {
   final String name;
@@ -34,12 +36,30 @@ class UseSelectionBlockV11 {
   UseSelectionBlockV11({required this.selectionToken, required this.aggregate, required this.targets});
 }
 
+/// An optional rule-level `report <agg> over <selection>` clause.
+///
+/// A `use` block's aggregate does two jobs at once: it decides whether an
+/// `on result` range matches, and it becomes the rule's reported value. Those
+/// are not always the same number — `highLow*` must *match* on max/min to pick
+/// which dice to blink, but should *report* the roll's total. This clause
+/// separates them: ranges keep testing the block aggregate, while the reported
+/// value comes from here.
+class ReportDef {
+  final RollAggregate aggregate;
+  final String selectionToken;
+
+  ReportDef({required this.aggregate, required this.selectionToken});
+}
+
 class ParsedScriptV11 {
   final String name;
   final String? displayName;
   final List<String> roll;
   final List<MakeSelectionDef> selections;
   final List<UseSelectionBlockV11> useBlocks;
+
+  /// Required, and written last: the single value the roll is recorded as.
+  final ReportDef report;
   String? script;
   int threshold;
   int modifier;
@@ -50,6 +70,7 @@ class ParsedScriptV11 {
     required this.roll,
     required this.selections,
     required this.useBlocks,
+    required this.report,
     this.script,
     this.threshold = 0,
     this.modifier = 0,
@@ -120,10 +141,31 @@ class RuleParser {
       )
       .map((entry) => ScriptResultTarget(entry.$5, entry.$7));
 
+  /// Cheap textual check for the presence of a `report` clause, for diagnostics
+  /// that need to distinguish "no report clause" from any other parse failure.
+  /// Not a substitute for parsing — it says the clause is there, not that it is
+  /// well-formed or correctly placed.
+  static final RegExp reportClausePattern = RegExp(r'^\s*report\s+\w+\s+over\s+\S+', multiLine: true);
+
+  /// `report <aggregate> over <selection>` — e.g. `report sum over $ALL_DICE`.
+  static final pp.Parser<ReportDef> _reportParser = pp
+      .seq7(
+        pp.whitespace().star(),
+        pp.string("report ").times(1).flatten(),
+        aggregateParsers,
+        pp.whitespace().star(),
+        pp.string("over ").times(1).flatten(),
+        [_atNameParser, variableParser].toChoiceParser(),
+        pp.whitespace().star(),
+      )
+      .map((e) => ReportDef(aggregate: e.$3, selectionToken: e.$6));
+
   static final pp.Parser _v11BlocksParser = [_makeSelectionParser, _useSelectionParser].toChoiceParser();
 
+  /// `report` is required and must be the last clause in a rule — it is the single
+  /// value the roll is recorded as, so every rule has to say what it reports.
   static final pp.Parser<ParsedScriptV11> v11ScriptParser = pp
-      .seq4(
+      .seq5(
         defineHeaderParser,
         pp.seq3(
           pp.string("for roll ").times(1).flatten(),
@@ -131,6 +173,7 @@ class RuleParser {
           pp.whitespace().star(),
         ),
         _v11BlocksParser.plus(),
+        _reportParser,
         pp.whitespace().star(),
       )
       .map((e) {
@@ -138,6 +181,7 @@ class RuleParser {
         final displayName = e.$1.$2;
         final rolls = e.$2.$2.elements;
         final List blocks = e.$3;
+        final ReportDef report = e.$4;
         final List<MakeSelectionDef> makes = [];
         final List<UseSelectionBlockV11> uses = [];
         for (final b in blocks) {
@@ -147,10 +191,19 @@ class RuleParser {
             uses.add(b);
           }
         }
-        Logger(
-          "RuleParser",
-        ).finer(() => "[DSL v1.1] parsed blocks name=$name makes=${makes.length} uses=${uses.length}");
-        return ParsedScriptV11(name: name, displayName: displayName, roll: rolls, selections: makes, useBlocks: uses);
+        Logger("RuleParser").finer(
+          () =>
+              "[DSL v1.1] parsed blocks name=$name makes=${makes.length} uses=${uses.length} "
+              "report=${report.selectionToken}",
+        );
+        return ParsedScriptV11(
+          name: name,
+          displayName: displayName,
+          roll: rolls,
+          selections: makes,
+          useBlocks: uses,
+          report: report,
+        );
       });
 
   static ParsedScriptV11 parse({
@@ -163,6 +216,12 @@ class RuleParser {
     replacedRule = replacedRule.replaceAll(modifierKey, modifier.toString());
     replacedRule = replacedRule.replaceAll(rolledCountKey, rolledCount.toString());
     replacedRule = replacedRule.replaceAll(rolledAliasKey, rolledCount.toString());
+    // $MAX/$MIN depend on the dice and are only known at evaluation time, where
+    // `_prepareEvaluation` substitutes them and reparses. This structural parse
+    // just needs the shape, so stand them in with a placeholder — otherwise the
+    // block they appear in fails to parse and, since `report` is required
+    // immediately after the blocks, the whole rule is rejected.
+    replacedRule = replacedRule.replaceAll(maxValueKey, '0').replaceAll(minValueKey, '0');
     replacedRule = stripComments(replacedRule);
 
     final pp.Result<ParsedScriptV11> res = v11ScriptParser.parse(replacedRule);

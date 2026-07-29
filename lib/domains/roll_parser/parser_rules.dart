@@ -21,7 +21,7 @@ final List<RuleScript> defaultRules = [
 ];
 
 class RuleScript {
-  final String name;   // ruleId: define block identifier, unique key
+  final String name; // ruleId: define block identifier, unique key
   final String script;
   bool enabled;
   int? priority;
@@ -31,13 +31,9 @@ class RuleScript {
   late final String displayName = parseDisplayName(script) ?? name;
 
   String toJsonString() {
-    return jsonEncode({
-      "name": name,
-      "script": script,
-      "enabled": enabled,
-      "priority": priority
-    });
+    return jsonEncode({"name": name, "script": script, "enabled": enabled, "priority": priority});
   }
+
   static RuleScript fromJsonString(String jsonString) {
     Map<String, dynamic> data = jsonDecode(jsonString) as Map<String, dynamic>;
     return RuleScript(
@@ -66,6 +62,8 @@ define d20percentiles "Percentiles (2d20)" for roll 2d20
     on result [75:90) action blink blue
     on result [90:99) action blink purple
     on result [99:*)  action sequence 1 red orange green blue violet
+
+  report sum over @ALL
 """;
 
 const String percentiles = """
@@ -80,6 +78,8 @@ define percentiles "Percentiles (1d10,1d100)" for roll 1d10,1d00
     on result [75:90) action blink blue
     on result [90:99) action blink purple
     on result [99:*)  action sequence 1 red orange green blue violet
+
+  report sum over \$ALL_DICE
 """;
 
 const String doubles = """
@@ -88,9 +88,14 @@ define doubles "Doubles" for roll *d*
   make selection @DUPE2
     with dupes [2:2]
 
+  # Gate on count: an empty selection is exactly 0, so [1:*] is a precise
+  # "did we find a pair" test even when the pair is two zero faces (d10/d00).
   use selection @DUPE2
     aggregate over selection count
     on result [1:*] action blink blue
+
+  # ...but report the pair's total, not how many dice are in it.
+  report sum over @DUPE2
 """;
 
 const String nDupes = """
@@ -102,6 +107,8 @@ define nDupes "Duplicates" for roll *d*
   use selection @NDUPE
     aggregate over selection count
     on result [1:*] action blink blue
+
+  report sum over @NDUPE
 """;
 
 const String advantage = """
@@ -113,6 +120,8 @@ define advantage "Advantage" for roll 2d20
   use selection @TOP
     aggregate over selection max
     on result [*:*] action blink green
+
+  report max over @TOP
 """;
 
 const String disadvantage = """
@@ -124,6 +133,8 @@ define disadvantage "Disadvantage" for roll 2d20
   use selection @BOT
     aggregate over selection min
     on result [*:*] action blink red
+
+  report min over @BOT
 """;
 
 const String standardRoll = """
@@ -132,6 +143,8 @@ define standardRoll "Basic Blink" for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+
+  report sum over \$ALL_DICE
 """;
 
 const String webhookExample = """
@@ -145,6 +158,8 @@ define webhookExample "Webhook Example" for roll *d*
     on result [*:*] action blink green
     on result [*:*] webhook POST http://localhost:8765/hook
     on result [*:*] discord https://discord.com/api/webhooks/your_webhook_id/your_webhook_token
+
+  report max over @TOP
 """;
 
 const String maxWithModifier = """
@@ -159,6 +174,8 @@ define maxWithModifier "Max (with Modifier)" for roll *d*
   use selection @ALL_MOD
     aggregate over selection max
     on result [*:*] action blink blue
+
+  report max over @ALL_MOD
 """;
 
 const String allAboveThreshold = """
@@ -171,6 +188,8 @@ define allAboveThreshold "All Above Threshold" for roll *d*
   use selection @ALL_THRESH
     aggregate over selection count
     on result [1:*] action blink green
+
+  report sum over @ALL_THRESH
 """;
 
 const String averagePassFailD10 = """
@@ -183,6 +202,8 @@ define averagePassFailD10 "Avg Pass/Fail (d10)" for roll *d10
     aggregate over selection avg
     on result [*:5] action blink red
     on result (5:10] action blink blue
+
+  report avg over @ALL
 """;
 
 const String highLowAllTies = """
@@ -212,6 +233,9 @@ define highLowAllTiesExclusive "High/Low/Tie All" for roll *d*
   use selection @ALL_MIN
     aggregate over selection count
     on result [1:\$ROLLED) action blink red
+
+  # Blocks match on max/min to pick dice; the roll reports its total.
+  report sum over \$ALL_DICE
 """;
 
 // Variant: blink only one highest (green) and one lowest (red); on tie blink only one purple
@@ -235,6 +259,9 @@ define highLowTiesSingle "High/Low/Tie Single" for roll *d*
   use selection @LOW
     aggregate over selection min
     on result [*:\$MAX) action blink red
+
+  # Blocks match on max/min to pick dice; the roll reports its total.
+  report sum over \$ALL_DICE
 """;
 
 // Variant: blink a single highest (green) and a single lowest (red);
@@ -261,4 +288,7 @@ define highLowSinglePreferMax "High/Low" for roll *d*
   use selection @LOW
     aggregate over selection min
     on result [*:\$MAX) action blink red
+
+  # Blocks match on max/min to pick dice; the roll reports its total.
+  report sum over \$ALL_DICE
 """;

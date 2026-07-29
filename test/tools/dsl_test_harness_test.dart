@@ -19,6 +19,7 @@ define highLow for roll *d*
   use selection @ALL_MIN
     aggregate over selection count
     on result [1:*] action blink red
+  report count over @ALL_MAX
 ''';
 
 void main() {
@@ -26,11 +27,7 @@ void main() {
     final runner = await DslTestRunner.create();
     final res = await runner.run(
       rule: ruleHighLow,
-      dice: [
-        DieInput('d6', 6, id: 'A'),
-        DieInput('d6', 6, id: 'B'),
-        DieInput('d6', 1, id: 'C'),
-      ],
+      dice: [DieInput('d6', 6, id: 'A'), DieInput('d6', 6, id: 'B'), DieInput('d6', 1, id: 'C')],
     );
 
     // Expect two greens (max) and one red (min)

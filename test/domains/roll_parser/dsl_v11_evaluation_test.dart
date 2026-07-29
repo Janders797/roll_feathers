@@ -70,7 +70,11 @@ class FakeBleRepository extends BleRepository {
   Future<bool> isSupported() async => true;
 
   @override
-  Future<void> scan({List<String>? services, List<String>? namePrefix, Duration? timeout = const Duration(seconds: 5)}) async {}
+  Future<void> scan({
+    List<String>? services,
+    List<String>? namePrefix,
+    Duration? timeout = const Duration(seconds: 5),
+  }) async {}
 
   @override
   Stream<bool> subscribeBleEnabled() => const Stream.empty();
@@ -87,12 +91,12 @@ class FakeDieDomain extends DieDomain {
   FakeDieDomain() : super(FakeBleRepository(), HaRepositoryEmpty());
   @override
   Future<void> blink(
-      Color blinkColor,
-      GenericDie die, {
-        bool withHa = true,
-        int blinkCount = 2,
-        Duration blinkInterval = const Duration(milliseconds: 500),
-      }) async {
+    Color blinkColor,
+    GenericDie die, {
+    bool withHa = true,
+    int blinkCount = 2,
+    Duration blinkInterval = const Duration(milliseconds: 500),
+  }) async {
     blinked.add('${(die as FakeDie).id}:${blinkColor.toARGB32()}');
   }
 }
@@ -151,7 +155,7 @@ void main() {
       const script =
           'define extremes for roll *d* make selection @HIGHEST with top 1 make selection @LOWEST with bottom 1 '
           'use selection @HIGHEST aggregate over selection max on result [*:*] action blink green '
-          'use selection @LOWEST aggregate over selection min on result [*:*] action blink red';
+          'use selection @LOWEST aggregate over selection min on result [*:*] action blink red\n  report max over @HIGHEST';
 
       final d1 = FakeDie('A', 'A', 2, dName: 'd6');
       final d2 = FakeDie('B', 'B', 5, dName: 'd6');
@@ -198,6 +202,7 @@ define pairsPlus for roll *d*
   use selection @DUPE
     aggregate over selection count
     on result [5:5] action blink green
+  report count over @DUPE
 ''';
 
       final parsed = RuleParser.v11ScriptParser.parse(script);
@@ -226,6 +231,7 @@ define pairsOnly for roll *d*
   use selection @PAIRS
     aggregate over selection count
     on result [2:2] action blink blue
+  report count over @PAIRS
 ''';
 
       final parsed = RuleParser.v11ScriptParser.parse(script);
@@ -257,7 +263,7 @@ define pairsOnly for roll *d*
           'make selection @HIGH with match [6:*] '
           'use selection @LOW aggregate over selection min on result [*:*] action blink red '
           'use selection @MID aggregate over selection avg on result [*:*] action blink orange '
-          'use selection @HIGH aggregate over selection max on result [*:*] action blink green';
+          'use selection @HIGH aggregate over selection max on result [*:*] action blink green\n  report min over @LOW';
 
       final a = FakeDie('A', 'A', 2, dName: 'd6');
       final b = FakeDie('B', 'B', 4, dName: 'd6');
@@ -272,7 +278,7 @@ define pairsOnly for roll *d*
     test('use \$ALL_DICE convenience selection', () async {
       final script =
           'define allice for roll *d* '
-          'use selection \$ALL_DICE aggregate over selection sum on result [*:*] action blink blue';
+          'use selection \$ALL_DICE aggregate over selection sum on result [*:*] action blink blue\n  report sum over \$ALL_DICE';
       final a = FakeDie('A', 'A', 1, dName: 'd6');
       final b = FakeDie('B', 'B', 2, dName: 'd6');
       await parser.evaluateRule(script, [a, b]).runEffects();
@@ -286,7 +292,7 @@ define pairsOnly for roll *d*
           'make selection @BASE with match [*:20] '
           'make selection @MID from @BASE with over 3 '
           'make selection @TOP from @MID with top 1 '
-          'use selection @TOP aggregate over selection sum on result [*:*] action blink purple';
+          'use selection @TOP aggregate over selection sum on result [*:*] action blink purple\n  report sum over @TOP';
       final a = FakeDie('A', 'A', 2, dName: 'd20');
       final b = FakeDie('B', 'B', 19, dName: 'd20');
       final c = FakeDie('C', 'C', 7, dName: 'd20');
@@ -300,7 +306,7 @@ define pairsOnly for roll *d*
           'define shared for roll *d* '
           'make selection @PASS with match [10:*] '
           'use selection @PASS aggregate over selection sum on result [10:14] action blink green '
-          'use selection @PASS aggregate over selection sum on result [15:*] action sequence red blue';
+          'use selection @PASS aggregate over selection sum on result [15:*] action sequence red blue\n  report sum over @PASS';
       final a = FakeDie('A', 'A', 12, dName: 'd20');
       final b = FakeDie('B', 'B', 18, dName: 'd20');
 
@@ -323,7 +329,7 @@ define pairsOnly for roll *d*
           'define immut for roll *d* '
           'make selection @ALL with match [*:*] '
           'use selection @ALL aggregate over selection sum on result [*:*] action blink red '
-          'use selection @ALL aggregate over selection sum on result [*:*] action blink red';
+          'use selection @ALL aggregate over selection sum on result [*:*] action blink red\n  report sum over @ALL';
       final a = FakeDie('A', 'A', 3, dName: 'd6');
       dd.blinked.clear();
       await parser.evaluateRule(script, [a]).runEffects();
@@ -338,7 +344,7 @@ define pairsOnly for roll *d*
           'make selection @ONE with match [*:*] '
           'use selection @ONE aggregate over selection sum '
           'on result [*:*] action blink red '
-          'on result [*:*] action blink blue';
+          'on result [*:*] action blink blue\n  report sum over @ONE';
 
       final a = FakeDie('X', 'X', 5, dName: 'd6');
       dd.blinked.clear();
@@ -359,7 +365,7 @@ define pairsOnly for roll *d*
           'define cross for roll *d* '
           'make selection @S with match [*:*] '
           'use selection @S aggregate over selection max on result [4:*] action blink green '
-          'use selection @S aggregate over selection min on result [*:3] action blink red';
+          'use selection @S aggregate over selection min on result [*:3] action blink red\n  report max over @S';
 
       final a = FakeDie('A', 'A', 3, dName: 'd6');
       final b = FakeDie('B', 'B', 4, dName: 'd6');
@@ -382,7 +388,7 @@ define pairsOnly for roll *d*
           'make selection @TOP2 with top 2 '
           'use selection @TOP2 aggregate over selection sum on result [*:*] action blink purple '
           'use selection @TOP2 aggregate over selection max on result [*:*] action blink blue '
-          'use selection @TOP2 aggregate over selection min on result [*:*] action blink orange';
+          'use selection @TOP2 aggregate over selection min on result [*:*] action blink orange\n  report sum over @TOP2';
 
       final a = FakeDie('A', 'A', 2, dName: 'd6');
       final b = FakeDie('B', 'B', 5, dName: 'd6');

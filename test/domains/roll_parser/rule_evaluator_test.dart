@@ -43,6 +43,7 @@ define myTest for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
 
 const String _validScript2 = '''
@@ -50,6 +51,7 @@ define myOther for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
 
 Future<RuleEvaluator> _makeEvaluator(AppService app) async {
@@ -78,10 +80,7 @@ void main() {
     });
 
     test('addRuleScript invalid DSL → throws FormatException', () async {
-      await expectLater(
-        ev.addRuleScript('this is not valid DSL'),
-        throwsA(isA<FormatException>()),
-      );
+      await expectLater(ev.addRuleScript('this is not valid DSL'), throwsA(isA<FormatException>()));
     });
 
     test('addRuleScript new rule → appears at index 0', () async {
@@ -171,10 +170,7 @@ void main() {
     test('persistence failure in addRuleScript → state rolled back', () async {
       final before = ev.getRules().map((r) => r.name).toList();
       app.failOnNextWrite = true;
-      await expectLater(
-        ev.addRuleScript(_validScript),
-        throwsA(isA<Exception>()),
-      );
+      await expectLater(ev.addRuleScript(_validScript), throwsA(isA<Exception>()));
       final after = ev.getRules().map((r) => r.name).toList();
       expect(after, equals(before));
     });
@@ -206,10 +202,7 @@ void main() {
       await ev.addRuleScript(_validScript);
       final before = ev.getRules().map((r) => '${r.name}:${r.enabled}').toList();
       app.failOnNextWrite = true;
-      await expectLater(
-        ev.toggleRuleScript('myTest', false),
-        throwsA(isA<Exception>()),
-      );
+      await expectLater(ev.toggleRuleScript('myTest', false), throwsA(isA<Exception>()));
       final after = ev.getRules().map((r) => '${r.name}:${r.enabled}').toList();
       expect(after, equals(before));
     });
@@ -228,10 +221,7 @@ void main() {
       await ev.addRuleScript(_validScript2);
       final before = ev.getRules().map((r) => r.name).toList();
       app.failOnNextWrite = true;
-      await expectLater(
-        ev.reorderRules(0, 1),
-        throwsA(isA<Exception>()),
-      );
+      await expectLater(ev.reorderRules(0, 1), throwsA(isA<Exception>()));
       final after = ev.getRules().map((r) => r.name).toList();
       expect(after, equals(before));
     });
@@ -260,10 +250,7 @@ void main() {
 
       final beforeHidden = ev.getHiddenDefaultRules().map((r) => r.name).toList();
       app.failOnNextWrite = true;
-      await expectLater(
-        ev.unhideRule(defaultName),
-        throwsA(isA<Exception>()),
-      );
+      await expectLater(ev.unhideRule(defaultName), throwsA(isA<Exception>()));
       expect(ev.getHiddenDefaultRules().map((r) => r.name).toList(), equals(beforeHidden));
       expect(ev.getRules().any((r) => r.name == defaultName), isFalse);
     });
@@ -294,9 +281,7 @@ void main() {
       await ev.addRuleScript(_validScript);
       // After add, myTest is at 0; defaults follow. Move a default to 0.
       final names = ev.getRules().map((r) => r.name).toList();
-      final firstDefaultIdx = names.indexWhere(
-        (n) => defaultRules.any((d) => d.name == n),
-      );
+      final firstDefaultIdx = names.indexWhere((n) => defaultRules.any((d) => d.name == n));
       final defaultName = names[firstDefaultIdx];
       await ev.reorderRules(firstDefaultIdx, 0);
       expect(ev.getRules().first.name, equals(defaultName));

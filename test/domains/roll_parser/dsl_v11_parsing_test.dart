@@ -16,11 +16,7 @@ void main() {
 
     test('all .rule fixtures should parse with v1.1 grammar', () {
       expect(fixturesDir.existsSync(), isTrue, reason: 'fixtures directory missing');
-      final files = fixturesDir
-          .listSync()
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.rule'))
-          .toList();
+      final files = fixturesDir.listSync().whereType<File>().where((f) => f.path.endsWith('.rule')).toList();
       expect(files, isNotEmpty, reason: 'no .rule fixtures found');
 
       for (final file in files) {
@@ -42,6 +38,7 @@ define myRule "My Display Name" for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
       final rule = RuleScript(name: 'myRule', script: script, enabled: true);
       expect(rule.displayName, 'My Display Name');
@@ -53,6 +50,7 @@ define myRule for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
       final rule = RuleScript(name: 'myRule', script: script, enabled: true);
       expect(rule.displayName, 'myRule');
@@ -64,6 +62,7 @@ define my-rule "My Rule" for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
       final result = RuleParser.v11ScriptParser.parse(script);
       expect(result.isSuccess, isTrue);
@@ -94,6 +93,7 @@ define myRule "My Display Name" for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
       final result = RuleParser.v11ScriptParser.parse(script);
       expect(result.isSuccess, isTrue);
@@ -106,6 +106,7 @@ define myRule for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
       final result = RuleParser.v11ScriptParser.parse(script);
       expect(result.isSuccess, isTrue);
@@ -120,12 +121,10 @@ define myBlink "Basic Blink" for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
       final runner = await DslTestRunner.create();
-      final res = await runner.run(
-        rule: rule,
-        dice: [DieInput('d6', 4)],
-      );
+      final res = await runner.run(rule: rule, dice: [DieInput('d6', 4)]);
       expect(res.parse.ruleDisplayName, 'Basic Blink');
     });
 
@@ -135,12 +134,10 @@ define myBlink for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink
+  report sum over \$ALL_DICE
 ''';
       final runner = await DslTestRunner.create();
-      final res = await runner.run(
-        rule: rule,
-        dice: [DieInput('d6', 4)],
-      );
+      final res = await runner.run(rule: rule, dice: [DieInput('d6', 4)]);
       expect(res.parse.ruleDisplayName, isNull);
     });
   });

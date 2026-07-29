@@ -22,7 +22,7 @@ void main() {
       expect(res.actions, isEmpty);
     });
 
-    test('doubles: a pair → result claimed, aggregate is the dupe count', () async {
+    test('doubles: a pair → result claimed, aggregate is the pair total', () async {
       final runner = await DslTestRunner.create();
       final res = await runner.run(
         rule: doubles,
@@ -31,7 +31,8 @@ void main() {
 
       expect(res.parse.ruleReturn, isTrue);
       expect(res.parse.matchedResult, isTrue);
-      expect(res.parse.result, 2);
+      // `aggregate over selection sum` — the pair's total (4+4), not a count of 2.
+      expect(res.parse.result, 8);
     });
 
     test('rolledEvaluated is the matched selection, not every die', () async {
@@ -48,10 +49,7 @@ void main() {
 
     test('unmatched rule falls back to all rolled dice for rolledEvaluated', () async {
       final runner = await DslTestRunner.create();
-      final res = await runner.run(
-        rule: doubles,
-        dice: [DieInput('d6', 1, id: 'A'), DieInput('d6', 2, id: 'B')],
-      );
+      final res = await runner.run(rule: doubles, dice: [DieInput('d6', 1, id: 'A'), DieInput('d6', 2, id: 'B')]);
 
       expect(res.parse.matchedResult, isFalse);
       expect(res.parse.rolledEvaluated.keys.toSet(), {'A', 'B'});
@@ -68,7 +66,7 @@ void main() {
 
       final hit = await runner.run(rule: nDupes, threshold: 3, dice: triple);
       expect(hit.parse.matchedResult, isTrue);
-      expect(hit.parse.result, 3);
+      expect(hit.parse.result, 6, reason: 'sum of the triple (2+2+2), not the count 3');
       expect(hit.parse.rolledEvaluated.keys.toSet(), {'A', 'B', 'C'});
 
       // Same dice, looking for quads — nothing selected, nothing claimed.
@@ -79,10 +77,7 @@ void main() {
 
     test('standardRoll still claims an ordinary roll', () async {
       final runner = await DslTestRunner.create();
-      final res = await runner.run(
-        rule: standardRoll,
-        dice: [DieInput('d6', 3, id: 'A'), DieInput('d6', 5, id: 'B')],
-      );
+      final res = await runner.run(rule: standardRoll, dice: [DieInput('d6', 3, id: 'A'), DieInput('d6', 5, id: 'B')]);
 
       expect(res.parse.matchedResult, isTrue, reason: 'the default rule must keep reporting rolls');
       expect(res.parse.result, 8);

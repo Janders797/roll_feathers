@@ -7,3 +7,4 @@ make selection @DOUBLES
 use selection @DOUBLES
   aggregate over selection sum
   on result [*:*] action blink blue
+  report sum over @DOUBLES

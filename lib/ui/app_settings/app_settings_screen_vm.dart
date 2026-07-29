@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:async/async.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -77,14 +76,14 @@ class AppSettingsScreenViewModel extends ChangeNotifier {
   String? _activationError;
 
   AppSettingsScreenViewModel(DiWrapper di)
-      : _appRepository = di.appRepository,
-        _bleRepository = di.bleRepository,
-        _haRepository = di.haRepository,
-        _dddiceDomain = di.dddiceDomain,
-        _dieDomain = di.dieDomain,
-        _apiDomain = di.apiDomain,
-        _ruleParser = di.ruleParser,
-        _platform = di.platformInfo {
+    : _appRepository = di.appRepository,
+      _bleRepository = di.bleRepository,
+      _haRepository = di.haRepository,
+      _dddiceDomain = di.dddiceDomain,
+      _dieDomain = di.dieDomain,
+      _apiDomain = di.apiDomain,
+      _ruleParser = di.ruleParser,
+      _platform = di.platformInfo {
     // init
     load = Command0(_load)..execute();
 
@@ -271,11 +270,9 @@ class AppSettingsScreenViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<DddiceRoom>> dddiceListRooms() =>
-      _dddiceDomain.listRooms(_dddiceConfig.token);
+  Future<List<DddiceRoom>> dddiceListRooms() => _dddiceDomain.listRooms(_dddiceConfig.token);
 
-  Future<List<DddiceTheme>> dddiceListThemes() =>
-      _dddiceDomain.listThemes(_dddiceConfig.token);
+  Future<List<DddiceTheme>> dddiceListThemes() => _dddiceDomain.listThemes(_dddiceConfig.token);
 
   Future<bool> dddiceSignInAsGuest() async {
     final success = await _dddiceDomain.signInAsGuest();
@@ -292,20 +289,18 @@ class AppSettingsScreenViewModel extends ChangeNotifier {
     final code = await _dddiceDomain.startActivation();
     if (code == null) return null;
 
-    _activationSubscription = _dddiceDomain.activationEvents.listen(
-      (event) {
-        switch (event) {
-          case DddiceActivationComplete(:final config):
-            _dddiceConfig = config;
-            _activationError = null;
-            _activationSubscription = null;
-            notifyListeners();
-          case DddiceActivationError(:final message):
-            _activationError = message;
-            notifyListeners();
-        }
-      },
-    );
+    _activationSubscription = _dddiceDomain.activationEvents.listen((event) {
+      switch (event) {
+        case DddiceActivationComplete(:final config):
+          _dddiceConfig = config;
+          _activationError = null;
+          _activationSubscription = null;
+          notifyListeners();
+        case DddiceActivationError(:final message):
+          _activationError = message;
+          notifyListeners();
+      }
+    });
     return code;
   }
 

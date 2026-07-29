@@ -16,13 +16,13 @@ class _Recorder {
   final List<Map<String, dynamic>> bodies = [];
 
   MockClient get client => MockClient((req) async {
-        requests.add(req);
-        if (req.method == 'POST') {
-          final body = jsonDecode((req).body) as Map<String, dynamic>;
-          bodies.add(body);
-        }
-        return http.Response('', 200);
-      });
+    requests.add(req);
+    if (req.method == 'POST') {
+      final body = jsonDecode((req).body) as Map<String, dynamic>;
+      bodies.add(body);
+    }
+    return http.Response('', 200);
+  });
 }
 
 // Full v11 script targeting a webhook — parameterised for method and range.
@@ -41,19 +41,18 @@ define $name for roll *d*
   use selection $selection
     aggregate over selection $aggregate
     on result $range webhook $method $url$extra
+  report $aggregate over $selection
 ''';
 }
 
 // Script with an extra action target in the same block before the webhook.
-String _scriptWithCoAction({
-  String method = 'POST',
-  String url = 'http://localhost/hook',
-}) => '''
+String _scriptWithCoAction({String method = 'POST', String url = 'http://localhost/hook'}) => '''
 define coAction for roll *d*
   use selection \$ALL_DICE
     aggregate over selection sum
     on result [*:*] action blink blue
     on result [*:*] webhook $method $url
+  report sum over \$ALL_DICE
 ''';
 
 Future<RuleEvaluator> _parser(FakeDieDomain dd, FakeAppService app, http.Client client) async {
@@ -139,6 +138,7 @@ define topOne for roll *d*
   use selection @TOP
     aggregate over selection max
     on result [*:*] webhook POST http://localhost/hook
+  report max over @TOP
 ''';
       final parser = await _parser(dd, app, rec.client);
       final dice = [FakeDie('a', 'Low', 1), FakeDie('b', 'Mid', 3), FakeDie('c', 'High', 5)];
@@ -205,6 +205,7 @@ define twoHooks for roll *d*
     aggregate over selection sum
     on result [*:*] webhook POST http://localhost/hook1
     on result [*:*] webhook POST http://localhost/hook2
+  report sum over \$ALL_DICE
 ''';
       final parser = await _parser(dd, app, rec.client);
       await parser.evaluateRule(script, [FakeDie('a', 'A', 3)]).runEffects();
@@ -224,6 +225,7 @@ define stripToken for roll *d*
     aggregate over selection sum
     on result [*:*] action blink $ALL_DICE
     on result [*:*] webhook POST http://localhost/hook
+  report sum over $ALL_DICE
 ''';
       final parser = await _parser(dd, app, rec.client);
       await parser.evaluateRule(script, [FakeDie('a', 'A', 3)]).runEffects();
@@ -258,11 +260,11 @@ define multi for roll *d*
     aggregate over selection sum
     on result [*:*] webhook POST http://localhost/hook1
     on result [*:*] webhook POST http://localhost/hook2
+  report sum over \$ALL_DICE
 ''';
       final parser = await _parser(dd, app, rec.client);
       await parser.evaluateRule(script, [FakeDie('a', 'A', 3)]).runEffects();
       expect(rec.requests.length, equals(2));
     });
   });
-
 }

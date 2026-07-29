@@ -11,3 +11,4 @@ use selection @PASS
 use selection @PASS
   aggregate over selection sum
   on result [15:*] action sequence red blue
+  report sum over @PASS

@@ -22,6 +22,7 @@ class PixelsDieSimulator implements PixelsDieInterface {
 
   int? _flashProfileHash;
 
+  @override
   final pix.PixelDieType dieType;
   final int ledCount;
   String _name;
@@ -50,14 +51,10 @@ class PixelsDieSimulator implements PixelsDieInterface {
 
   Stream<List<int>> get notifyStream => _notifyController.stream;
 
-  PixelsDieSimulator({
-    String? dieId,
-    this.dieType = pix.PixelDieType.d20,
-    this.ledCount = 20,
-    String? name,
-  })  : dieId = dieId ?? 'sim-${DateTime.now().microsecondsSinceEpoch}',
-        _name = name ?? 'Simulator',
-        ledColors = List.filled(ledCount, 0xFFFFFFFF);
+  PixelsDieSimulator({String? dieId, this.dieType = pix.PixelDieType.d20, this.ledCount = 20, String? name})
+    : dieId = dieId ?? 'sim-${DateTime.now().microsecondsSinceEpoch}',
+      _name = name ?? 'Simulator',
+      ledColors = List.filled(ledCount, 0xFFFFFFFF);
 
   String get name => _name;
 
@@ -96,10 +93,13 @@ class PixelsDieSimulator implements PixelsDieInterface {
     _handleIncoming(msg.toBuffer());
 
     try {
-      return await completer.future.timeout(timeout, onTimeout: () {
-        sub.cancel();
-        throw TimeoutException('Simulator timed out waiting for ${waitFor.name}', timeout);
-      });
+      return await completer.future.timeout(
+        timeout,
+        onTimeout: () {
+          sub.cancel();
+          throw TimeoutException('Simulator timed out waiting for ${waitFor.name}', timeout);
+        },
+      );
     } catch (_) {
       sub.cancel();
       rethrow;
@@ -107,10 +107,7 @@ class PixelsDieSimulator implements PixelsDieInterface {
   }
 
   @override
-  Future<T> waitFor<T extends RxMessage>(
-    pix.PixelMessageType type, {
-    required Duration timeout,
-  }) async {
+  Future<T> waitFor<T extends RxMessage>(pix.PixelMessageType type, {required Duration timeout}) async {
     final completer = Completer<T>();
 
     late StreamSubscription<List<int>> sub;
@@ -125,10 +122,13 @@ class PixelsDieSimulator implements PixelsDieInterface {
     });
 
     try {
-      return await completer.future.timeout(timeout, onTimeout: () {
-        sub.cancel();
-        throw TimeoutException('Simulator timed out waiting for ${type.name}', timeout);
-      });
+      return await completer.future.timeout(
+        timeout,
+        onTimeout: () {
+          sub.cancel();
+          throw TimeoutException('Simulator timed out waiting for ${type.name}', timeout);
+        },
+      );
     } catch (_) {
       sub.cancel();
       rethrow;
@@ -161,11 +161,7 @@ class PixelsDieSimulator implements PixelsDieInterface {
   void simulateBattery(int percent, {int batteryState = 0}) {
     _batteryPercent = percent.clamp(0, 100);
     _batteryStateIndex = batteryState;
-    _emit([
-      pix.PixelMessageType.batteryLevel.index,
-      _batteryPercent,
-      _batteryStateIndex,
-    ]);
+    _emit([pix.PixelMessageType.batteryLevel.index, _batteryPercent, _batteryStateIndex]);
   }
 
   /// Push a notifyUser message from the die (e.g. confirm firmware update).
@@ -173,12 +169,7 @@ class PixelsDieSimulator implements PixelsDieInterface {
   /// The app should respond via [PixelActionPlayAnimation] or by sending
   /// [MessageNotifyUserAck]. Use [waitFor] on the caller side to intercept
   /// the ack.
-  void simulateNotifyUser({
-    int timeoutSec = 10,
-    bool ok = true,
-    bool cancel = false,
-    String message = '',
-  }) {
+  void simulateNotifyUser({int timeoutSec = 10, bool ok = true, bool cancel = false, String message = ''}) {
     final msgBytes = message.codeUnits.take(28).toList();
     _emit([
       pix.PixelMessageType.notifyUser.index,
@@ -284,11 +275,7 @@ class PixelsDieSimulator implements PixelsDieInterface {
   }
 
   void _emitBulkDataAck(int nextOffset) {
-    _emit([
-      pix.PixelMessageType.bulkDataAck.index,
-      nextOffset & 0xFF,
-      (nextOffset >> 8) & 0xFF,
-    ]);
+    _emit([pix.PixelMessageType.bulkDataAck.index, nextOffset & 0xFF, (nextOffset >> 8) & 0xFF]);
   }
 
   List<int> _buildIAmADie() {
@@ -308,11 +295,7 @@ class PixelsDieSimulator implements PixelsDieInterface {
     return buf;
   }
 
-  List<int> _buildRollState(int state, int face) => [
-    pix.PixelMessageType.rollState.index,
-    state,
-    face,
-  ];
+  List<int> _buildRollState(int state, int face) => [pix.PixelMessageType.rollState.index, state, face];
 
   RxMessage _parseRx(List<int> data) {
     if (data.isEmpty) return pix.MessageNone(buffer: data);
@@ -321,32 +304,24 @@ class PixelsDieSimulator implements PixelsDieInterface {
       pix.PixelMessageType.iAmADie => pix.MessageIAmADie.parse(data),
       pix.PixelMessageType.batteryLevel => pix.MessageBatteryLevel.parse(data),
       pix.PixelMessageType.rollState => pix.MessageRollState.parse(data),
-      pix.PixelMessageType.transferAnimationSetAck =>
-        pix.MessageTransferAnimationSetAck.parse(data),
-      pix.PixelMessageType.transferAnimationSetFinished =>
-        pix.MessageTransferAnimationSetFinished.parse(data),
+      pix.PixelMessageType.transferAnimationSetAck => pix.MessageTransferAnimationSetAck.parse(data),
+      pix.PixelMessageType.transferAnimationSetFinished => pix.MessageTransferAnimationSetFinished.parse(data),
       pix.PixelMessageType.bulkSetupAck => pix.MessageBulkSetupAck.parse(data),
       pix.PixelMessageType.bulkDataAck => pix.MessageBulkDataAck.parse(data),
-      pix.PixelMessageType.transferInstantAnimationSetAck =>
-        pix.MessageTransferInstantAnimationSetAck.parse(data),
-      pix.PixelMessageType.transferInstantAnimationSetFinished =>
-        pix.MessageTransferInstantAnimationSetFinished.parse(data),
-      pix.PixelMessageType.batteryLevel =>
-        pix.MessageBatteryLevel.parse(data),
-      pix.PixelMessageType.notifyUser =>
-        pix.MessageNotifyUser.parse(data),
+      pix.PixelMessageType.transferInstantAnimationSetAck => pix.MessageTransferInstantAnimationSetAck.parse(data),
+      pix.PixelMessageType.transferInstantAnimationSetFinished => pix.MessageTransferInstantAnimationSetFinished.parse(
+        data,
+      ),
+      pix.PixelMessageType.batteryLevel => pix.MessageBatteryLevel.parse(data),
+      pix.PixelMessageType.notifyUser => pix.MessageNotifyUser.parse(data),
       _ => pix.MessageNone(buffer: data),
     };
   }
 
-  static int _getU16(List<int> data, int offset) =>
-      data[offset] | (data[offset + 1] << 8);
+  static int _getU16(List<int> data, int offset) => data[offset] | (data[offset + 1] << 8);
 
   static int _getU32(List<int> data, int offset) =>
-      data[offset] |
-      (data[offset + 1] << 8) |
-      (data[offset + 2] << 16) |
-      (data[offset + 3] << 24);
+      data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24);
 
   static void _setU16(List<int> buf, int offset, int value) {
     buf[offset] = value & 0xFF;
