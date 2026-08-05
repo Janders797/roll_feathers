@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:roll_feathers/domains/die_domain.dart';
 import 'package:roll_feathers/domains/roll_domain.dart';
 import 'package:roll_feathers/dice_sdks/dice_sdks.dart';
@@ -28,9 +29,12 @@ Handler buildApiHandler(RollDomain rollDomain, DieDomain dieDomain) {
       'name': die.friendlyName,
       'kind': isVirtual ? 'virtual' : 'physical',
       'dieType': die.type.name,
-      'denomination': 'd${die.dType.faceCount}',
-      'faces': die.dType.faceCount,
+      'denomination': die.dType.name,
+      'faces': die.dType.faces,
       'connected': true,
+      'rollState': die.state.rollState,
+      'currentFaceValue': die.state.currentFaceValue,
+      'batteryLevel': die.state.batteryLevel,
     };
   }
 
@@ -43,18 +47,20 @@ Handler buildApiHandler(RollDomain rollDomain, DieDomain dieDomain) {
     final die = dieDomain.getDieById(dieId);
     final isVirtual = die?.type == GenericDieType.virtual;
 
-    // A deterministic, monotonic-enough identifier per die event.
-    final base = result.rollTime.microsecondsSinceEpoch;
+    // DateTime.microsecondsSinceEpoch stays within JavaScript's exact integer
+    // range. Adding a small per-roll index keeps simultaneous die events unique
+    // without multiplying beyond Number.MAX_SAFE_INTEGER.
+    final eventId = result.rollTime.microsecondsSinceEpoch + index;
 
     return {
-      'eventId': base * 1000 + index,
+      'eventId': eventId,
       'timestamp': result.rollTime.toIso8601String(),
       'dieId': dieId,
       'name': die?.friendlyName,
       'kind': isVirtual ? 'virtual' : 'physical',
       'dieType': die?.type.name,
-      'denomination': die == null ? null : 'd${die.dType.faceCount}',
-      'faces': die?.dType.faceCount,
+      'denomination': die?.dType.name,
+      'faces': die?.dType.faces,
       'value': value,
     };
   }
@@ -95,11 +101,12 @@ Handler buildApiHandler(RollDomain rollDomain, DieDomain dieDomain) {
         int.tryParse(request.url.queryParameters['after'] ?? '0') ?? 0;
     final requestedLimit =
         int.tryParse(request.url.queryParameters['limit'] ?? '100') ?? 100;
-    final limit = requestedLimit.clamp(1, 500);
+    final limit = requestedLimit.clamp(1, 500).toInt();
 
     final events = <Map<String, dynamic>>[];
 
-    // rollHistory is newest-first in current Roll Feathers.
+    // RollDomain stores history newest-first. Reverse it so clients receive
+    // events oldest-first and can consume them in chronological order.
     for (final result in rollDomain.rollHistory.reversed) {
       for (final event in explodeRoll(result)) {
         if ((event['eventId'] as int) > after) {
