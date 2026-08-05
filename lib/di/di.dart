@@ -116,7 +116,10 @@ class DiWrapper {
     if (platform.isWeb) {
       apiDomain = EmptyApiDomain();
     } else {
-      apiDomain = await ApiDomainServer.create(rollDomain: rollDomain);
+      apiDomain = await ApiDomainServer.create(
+        rollDomain: rollDomain,
+        dieDomain: dieDomain,
+      );
     }
 
     return DiWrapper._(
