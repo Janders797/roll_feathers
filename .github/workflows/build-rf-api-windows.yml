@@ -8,8 +8,8 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout your fork
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -17,48 +17,17 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Apply RF API patch
+      - name: Enable Windows desktop
         shell: pwsh
-        run: |
-          Copy-Item -Force `
-            patch/lib/domains/api_domain.dart `
-            lib/domains/api_domain.dart
+        run: flutter config --enable-windows-desktop
 
-          $path = "lib/di/di.dart"
-          $text = Get-Content -Raw $path
-          $patterns = @(
-            'ApiDomainServer\.create\(\s*rollDomain:\s*rollDomain,\s*\)',
-            'ApiDomainServer\.create\(rollDomain:\s*rollDomain\)'
-          )
-          $replacement = @'
-          ApiDomainServer.create(
-            rollDomain: rollDomain,
-            dieDomain: dieDomain,
-          )
-          '@
-
-          $changed = $false
-          foreach ($pattern in $patterns) {
-            $newText = [regex]::Replace($text, $pattern, $replacement)
-            if ($newText -ne $text) {
-              $text = $newText
-              $changed = $true
-              break
-            }
-          }
-
-          if (-not $changed) {
-            throw "ApiDomainServer.create(...) was not found."
-          }
-
-          Set-Content -Path $path -Value $text -NoNewline
+      - name: Install dependencies
+        shell: pwsh
+        run: flutter pub get
 
       - name: Build Windows portable release
         shell: pwsh
-        run: |
-          flutter config --enable-windows-desktop
-          flutter pub get
-          flutter build windows --release
+        run: flutter build windows --release
 
       - name: Package portable folder
         shell: pwsh
