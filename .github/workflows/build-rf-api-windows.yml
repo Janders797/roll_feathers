@@ -1,0 +1,74 @@
+name: Build Roll Feathers RF API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout your fork
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Apply RF API patch
+        shell: pwsh
+        run: |
+          Copy-Item -Force `
+            patch/lib/domains/api_domain.dart `
+            lib/domains/api_domain.dart
+
+          $path = "lib/di/di.dart"
+          $text = Get-Content -Raw $path
+          $patterns = @(
+            'ApiDomainServer\.create\(\s*rollDomain:\s*rollDomain,\s*\)',
+            'ApiDomainServer\.create\(rollDomain:\s*rollDomain\)'
+          )
+          $replacement = @'
+          ApiDomainServer.create(
+            rollDomain: rollDomain,
+            dieDomain: dieDomain,
+          )
+          '@
+
+          $changed = $false
+          foreach ($pattern in $patterns) {
+            $newText = [regex]::Replace($text, $pattern, $replacement)
+            if ($newText -ne $text) {
+              $text = $newText
+              $changed = $true
+              break
+            }
+          }
+
+          if (-not $changed) {
+            throw "ApiDomainServer.create(...) was not found."
+          }
+
+          Set-Content -Path $path -Value $text -NoNewline
+
+      - name: Build Windows portable release
+        shell: pwsh
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release
+
+      - name: Package portable folder
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path build/windows/x64/runner/Release/* `
+            -DestinationPath Roll-Feathers-RF-API-Portable.zip
+
+      - name: Upload portable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Roll-Feathers-RF-API-Portable
+          path: Roll-Feathers-RF-API-Portable.zip
